@@ -1,0 +1,206 @@
+/*
+ * Alpha Cursor — Tailwind CSS v4 entry stylesheet
+ * ------------------------------------------------
+ * Tailwind v4 is CSS-first: the design system is configured here in a `@theme`
+ * block rather than a JS config file. The token VALUES are sourced from
+ * `tokens.css` (raw `--acx-*` custom properties, mirrored from DESIGN.md) so
+ * there is a single source of truth. The `@theme` block re-exposes those tokens
+ * under Tailwind's own namespaces (`--color-*`, `--font-*`, `--text-*`,
+ * `--spacing-*`, `--radius-*`, `--shadow-*`) which is what makes utilities like
+ * `bg-primary`, `text-body-md`, `p-lg`, `rounded-lg`, and `shadow-soft` exist.
+ *
+ * Shadow DOM note: the content-script UI mounts in CLOSED shadow roots (see the
+ * design doc). Tailwind utility classes compiled from this file are injected
+ * into each shadow root together with `tokens.css`. For surfaces that only need
+ * the raw variables (no utilities), import `tokens.css?inline` directly. See
+ * `theme.ts` for the import helpers.
+ */
+
+@import "tailwindcss";
+
+/* Raw design tokens (`--acx-*`). Imported so the `@theme` values below can
+ * reference them via var() and so the variables are available to hand-written
+ * CSS and inline styles inside Shadow DOM roots. */
+@import "./tokens.css";
+
+@theme {
+  /* ── Fonts ──────────────────────────────────────────────────────── */
+  /* Inter stack; NotionInter is substituted by Inter per DESIGN.md. */
+  --font-sans: "Inter", -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
+    sans-serif;
+
+  /* ── Colors ─────────────────────────────────────────────────────── */
+  /* Structural accent — reserve `primary` for CTAs, links, and focus. */
+  --color-primary: var(--acx-color-primary);
+  --color-primary-active: var(--acx-color-primary-active);
+  --color-secondary: var(--acx-color-secondary);
+  --color-on-primary: var(--acx-color-on-primary);
+
+  /* Surfaces */
+  --color-canvas: var(--acx-color-canvas);
+  --color-canvas-soft: var(--acx-color-canvas-soft);
+  --color-surface: var(--acx-color-surface);
+  --color-surface-raised: var(--acx-color-surface-raised);
+  --color-hairline: var(--acx-color-hairline);
+  --color-hairline-strong: var(--acx-color-hairline-strong);
+
+  /* Semantic interaction fills + scrim (theme-adaptive). Exposed so utilities
+   * like `bg-fill-subtle`, `hover:bg-fill-hover`, and `bg-scrim` work in both
+   * light and dark without hardcoded rgba() values. */
+  --color-fill-subtle: var(--acx-fill-subtle);
+  --color-fill-hover: var(--acx-fill-hover);
+  --color-fill-active: var(--acx-fill-active);
+  --color-scrim: var(--acx-scrim);
+  --color-edge-highlight: var(--acx-edge-highlight);
+
+  /* Ink / text */
+  --color-ink: var(--acx-color-ink);
+  --color-ink-secondary: var(--acx-color-ink-secondary);
+  --color-ink-muted: var(--acx-color-ink-muted);
+  --color-ink-faint: var(--acx-color-ink-faint);
+
+  /* Decorative sticker palette — illustration use only, never structural. */
+  --color-accent-sky: var(--acx-color-accent-sky);
+  --color-accent-purple: var(--acx-color-accent-purple);
+  --color-accent-purple-deep: var(--acx-color-accent-purple-deep);
+  --color-accent-pink: var(--acx-color-accent-pink);
+  --color-accent-orange: var(--acx-color-accent-orange);
+  --color-accent-orange-deep: var(--acx-color-accent-orange-deep);
+  --color-accent-teal: var(--acx-color-accent-teal);
+  --color-accent-green: var(--acx-color-accent-green);
+  --color-accent-brown: var(--acx-color-accent-brown);
+
+  /* ── Typography scale ───────────────────────────────────────────── */
+  /* Tailwind v4 pairs each `--text-{name}` with optional companion vars for
+   * line-height / letter-spacing / font-weight, so a single `text-{name}`
+   * utility carries the full type role from DESIGN.md (including the negative
+   * display tracking). */
+  --text-display-1: 64px;
+  --text-display-1--line-height: 1;
+  --text-display-1--letter-spacing: -2.125px;
+  --text-display-1--font-weight: 700;
+
+  --text-display-2: 54px;
+  --text-display-2--line-height: 1.04;
+  --text-display-2--letter-spacing: -1.875px;
+  --text-display-2--font-weight: 700;
+
+  --text-heading-1: 40px;
+  --text-heading-1--line-height: 1.1;
+  --text-heading-1--letter-spacing: -1px;
+  --text-heading-1--font-weight: 700;
+
+  --text-heading-2: 26px;
+  --text-heading-2--line-height: 1.23;
+  --text-heading-2--letter-spacing: -0.625px;
+  --text-heading-2--font-weight: 700;
+
+  --text-heading-3: 22px;
+  --text-heading-3--line-height: 1.27;
+  --text-heading-3--letter-spacing: -0.25px;
+  --text-heading-3--font-weight: 700;
+
+  --text-title: 20px;
+  --text-title--line-height: 1.4;
+  --text-title--letter-spacing: -0.125px;
+  --text-title--font-weight: 600;
+
+  --text-body-md: 16px;
+  --text-body-md--line-height: 1.5;
+  --text-body-md--letter-spacing: 0;
+  --text-body-md--font-weight: 400;
+
+  --text-body-sm: 15px;
+  --text-body-sm--line-height: 1.33;
+  --text-body-sm--letter-spacing: 0;
+  --text-body-sm--font-weight: 400;
+
+  --text-button: 16px;
+  --text-button--line-height: 1.5;
+  --text-button--letter-spacing: 0;
+  --text-button--font-weight: 500;
+
+  --text-caption: 14px;
+  --text-caption--line-height: 1.43;
+  --text-caption--letter-spacing: 0;
+  --text-caption--font-weight: 400;
+
+  --text-eyebrow: 12px;
+  --text-eyebrow--line-height: 1.33;
+  --text-eyebrow--letter-spacing: 0.125px;
+  --text-eyebrow--font-weight: 600;
+
+  /* ── Spacing scale (8px base) ───────────────────────────────────── */
+  --spacing-xxs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 28px;
+  --spacing-xxl: 32px;
+
+  /* ── Border radius scale ────────────────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* ── Elevation (barely-there layered shadows) ───────────────────── */
+  --shadow-soft: var(--acx-shadow-soft);
+  --shadow-elevated: var(--acx-shadow-elevated);
+}
+
+/* Base layer: apply the Notion paper-calm defaults to extension surfaces.
+ * Scoped to `:where(html, :host)` so it sets sensible defaults for both the
+ * document-rendered surfaces (popup/options) and Shadow DOM roots without
+ * raising specificity (the `:where()` keeps it at zero specificity so any
+ * utility class wins). */
+@layer base {
+  :where(html, :host) {
+    font-family: var(--acx-font-sans);
+    font-feature-settings: var(--acx-font-feature-settings);
+    color: var(--acx-color-ink);
+    background-color: var(--acx-color-canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    /* Light default; the dark override below flips native UI (scrollbars,
+     * form controls, the document chrome behind the popup) to match. */
+    color-scheme: light;
+  }
+
+  /* Match native UI to the active theme. */
+  @media (prefers-color-scheme: dark) {
+    :where(html, :host) {
+      color-scheme: dark;
+    }
+  }
+  :where([data-acx-theme="dark"]) {
+    color-scheme: dark;
+  }
+  :where([data-acx-theme="light"]) {
+    color-scheme: light;
+  }
+
+  /* Document-rendered surfaces (popup / options pages) fill their viewport with
+   * the warm canvas so there is never a flash of the browser's default white
+   * behind the rounded cards in dark mode. */
+  :where(body) {
+    margin: 0;
+    background-color: var(--acx-color-canvas);
+    color: var(--acx-color-ink);
+  }
+}
+
+/* Premium dark-mode finish: a hairline-thin top edge highlight on elevated
+ * surfaces (cards/menus/toasts) so they feel gently lit from above rather than
+ * flat. A no-op in light mode where `--acx-edge-highlight` is transparent.
+ * Apply with the `acx-elevated` class on any raised surface. */
+@layer components {
+  .acx-elevated {
+    box-shadow:
+      inset 0 1px 0 0 var(--acx-edge-highlight),
+      var(--acx-shadow-elevated);
+  }
+}

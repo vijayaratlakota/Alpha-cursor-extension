@@ -1,0 +1,407 @@
+/**
+ * Alpha Cursor — Popup surface (task 24.1).
+ *
+ * The toolbar popup is the primary home of the global ON/OFF Toggle (Req 1.1),
+ * a compact Notepad view with a "Copy All" action (Req 6.1), and an entry point
+ * to the full Options page (Req 19.1). It renders in the extension's main
+ * document (not a content-script Shadow DOM), so the compiled Tailwind v4 + Notion
+ * token stylesheet is imported directly below so `@tailwindcss/vite` includes it
+ * for this HTML entry and the utility classes apply (Req 20.1).
+ *
+ * Data flow:
+ *   - Toggle: reads `getEnabled()` on open, writes via `setEnabled()` on change,
+ *     and reflects external changes (other tabs / options page) via
+ *     `onEnabledChanged()` — all of which run fine in this extension-page context
+ *     where `chrome.storage` is available.
+ *   - Notepad: the popup messages the background router (`chrome.runtime.sendMessage`)
+ *     for `NOTEPAD_LIST` (to render entries) and `NOTEPAD_COPY_ALL` (to get the
+ *     joined string), then performs the actual `navigator.clipboard.writeText`
+ *     here under the popup's user gesture (Req 6.2–6.5).
+ *
+ * Accessibility / motion (Req 20): the Toggle is a `role="switch"` control with
+ * `aria-checked`, a visible focus-visible ring, and a `motion-safe:`-gated knob
+ * transition so `prefers-reduced-motion` is honored (Req 20.5, 20.6). Copy All
+ * feedback is announced through an `aria-live` status region.
+ */
+
+// Pull the compiled Tailwind + Notion-token stylesheet into the popup page so
+// the utility classes used below resolve. (Content-script surfaces inject this
+// into their Shadow DOM instead; the popup is a normal document.)
+import "../ui/styles/tailwind.css";
+
+import { createButton } from "../ui/primitives/button";
+import { joinClasses } from "../ui/primitives/classNames";
+import {
+  getEnabled,
+  getCachedEnabled,
+  setEnabled,
+  onEnabledChanged,
+} from "../shared/settings";
+import {
+  NotepadMessageType,
+  type NotepadCopyAllResult,
+  type NotepadEntry,
+} from "../tools/notepad/notepad";
+import {
+  createMessage,
+  isOk,
+  type Message,
+  type Response,
+} from "../shared/messaging";
+
+// ---------------------------------------------------------------------------
+// Background messaging helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a typed message to the background router and await its `Response`,
+ * normalizing a missing channel / `lastError` into an error `Response` so the
+ * popup never throws at the boundary.
+ */
+function sendToBackground<T, R>(
+  type: NotepadMessageType,
+  payload: T,
+): Promise<Response<R>> {
+  const message: Message<T> = createMessage(type, payload);
+  return new Promise<Response<R>>((resolve) => {
+    try {
+      const maybePromise = chrome.runtime.sendMessage(message) as
+        | Promise<Response<R>>
+        | undefined;
+      if (maybePromise && typeof maybePromise.then === "function") {
+        maybePromise.then(
+          (response) => resolve(normalizeResponse(response)),
+          () => resolve(errorResponse("No response from background")),
+        );
+        return;
+      }
+    } catch {
+      resolve(errorResponse("Messaging unavailable"));
+      return;
+    }
+    resolve(errorResponse("No response from background"));
+  });
+}
+
+function errorResponse<R>(message: string): Response<R> {
+  return {
+    ok: false,
+    error: { code: "UNKNOWN", message, recoverable: true },
+  };
+}
+
+function normalizeResponse<R>(response: Response<R> | undefined): Response<R> {
+  if (response && typeof response === "object" && "ok" in response) {
+    return response;
+  }
+  return errorResponse("Malformed background response");
+}
+
+// ---------------------------------------------------------------------------
+// Status (aria-live) region
+// ---------------------------------------------------------------------------
+
+/** A small status line used to announce Copy All outcomes (Req 6.3–6.5). */
+function createStatusRegion(): {
+  el: HTMLElement;
+  show(text: string, kind?: "info" | "success" | "error"): void;
+} {
+  const el = document.createElement("p");
+  el.setAttribute("role", "status");
+  el.setAttribute("aria-live", "polite");
+  el.className = joinClasses(
+    "m-0 min-h-[1.43em] text-caption font-sans",
+    "text-ink-muted",
+  );
+
+  let clearTimer: ReturnType<typeof setTimeout> | undefined;
+  const show = (text: string, kind: "info" | "success" | "error" = "info"): void => {
+    if (clearTimer !== undefined) clearTimeout(clearTimer);
+    el.textContent = text;
+    el.className = joinClasses(
+      "m-0 min-h-[1.43em] text-caption font-sans",
+      kind === "error" ? "text-accent-orange-deep" : "text-ink-muted",
+    );
+    if (text) {
+      clearTimer = setTimeout(() => {
+        el.textContent = "";
+      }, 4000);
+    }
+  };
+
+  return { el, show };
+}
+
+// ---------------------------------------------------------------------------
+// Global Toggle (role="switch") — Req 1.1
+// ---------------------------------------------------------------------------
+
+interface ToggleHandle {
+  /** The row element to mount. */
+  el: HTMLElement;
+  /** Reflect an externally-changed state without firing the change handler. */
+  setState(enabled: boolean): void;
+}
+
+/**
+ * Build the global ON/OFF Toggle as an accessible two-state switch
+ * (`role="switch"` + `aria-checked`). Clicking or pressing Space/Enter flips the
+ * state and invokes `onChange`; `setState` reflects external changes (Req 1.1).
+ */
+function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
+  const row = document.createElement("div");
+  row.className = joinClasses(
+    "flex items-center justify-between gap-md",
+    "px-md py-sm rounded-md bg-surface border border-hairline",
+  );
+
+  const labelWrap = document.createElement("div");
+  labelWrap.className = "flex flex-col";
+
+  const labelId = "acx-toggle-label";
+  const title = document.createElement("span");
+  title.id = labelId;
+  title.className = "text-body-sm font-sans text-ink";
+  title.textContent = "Alpha Cursor";
+
+  const stateText = document.createElement("span");
+  stateText.className = "text-caption font-sans text-ink-muted";
+
+  labelWrap.append(title, stateText);
+
+  // The switch itself: a pill track with a sliding knob.
+  const sw = document.createElement("button");
+  sw.type = "button";
+  sw.setAttribute("role", "switch");
+  sw.setAttribute("aria-labelledby", labelId);
+  sw.className = joinClasses(
+    "relative inline-flex items-center shrink-0 cursor-pointer",
+    "w-[44px] h-[24px] rounded-full border-0 p-0",
+    "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
+  );
+
+  const knob = document.createElement("span");
+  knob.setAttribute("aria-hidden", "true");
+  knob.className = joinClasses(
+    "absolute top-[2px] left-[2px] size-[20px] rounded-full bg-surface shadow-soft",
+    "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
+  );
+  sw.appendChild(knob);
+
+  // Seed from the cached/default state (default-on) so the switch shows ON
+  // immediately on open instead of flashing OFF before storage resolves.
+  let current = getCachedEnabled();
+
+  const paint = (enabled: boolean): void => {
+    sw.setAttribute("aria-checked", String(enabled));
+    // Track color: reserved primary blue when ON, neutral canvas-soft when OFF.
+    sw.style.backgroundColor = enabled
+      ? "var(--acx-color-primary)"
+      : "var(--acx-color-hairline)";
+    knob.style.transform = enabled ? "translateX(20px)" : "translateX(0)";
+    stateText.textContent = enabled ? "On" : "Off";
+  };
+
+  paint(current);
+
+  sw.addEventListener("click", () => {
+    current = !current;
+    paint(current);
+    onChange(current);
+  });
+
+  row.append(labelWrap, sw);
+
+  return {
+    el: row,
+    setState(enabled: boolean): void {
+      current = enabled;
+      paint(enabled);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Notepad view — Req 6.1
+// ---------------------------------------------------------------------------
+
+/** Collapse an entry to a single trimmed line for the compact popup list. */
+function toSingleLine(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+/** Render the notepad entries (most-recent first) or an empty state. */
+function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): void {
+  container.replaceChildren();
+
+  if (entries.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = joinClasses(
+      "flex items-center justify-center text-center",
+      "rounded-lg bg-canvas-soft px-md py-lg",
+      "text-caption font-sans text-ink-faint",
+    );
+    empty.textContent = "No copied text yet. Copies are saved here automatically.";
+    container.appendChild(empty);
+    return;
+  }
+
+  const list = document.createElement("ul");
+  list.className = joinClasses(
+    "m-0 p-0 list-none flex flex-col gap-xxs",
+    "max-h-[220px] overflow-y-auto",
+  );
+
+  // Most-recent first.
+  for (const entry of [...entries].reverse()) {
+    const item = document.createElement("li");
+    item.className = joinClasses(
+      "truncate text-body-sm font-sans text-ink-secondary",
+      "px-sm py-xxs rounded-sm bg-surface border border-hairline",
+    );
+    const line = toSingleLine(entry.text);
+    item.textContent = line.length > 0 ? line : "(empty)";
+    item.title = line;
+    list.appendChild(item);
+  }
+
+  container.appendChild(list);
+}
+
+// ---------------------------------------------------------------------------
+// Mount
+// ---------------------------------------------------------------------------
+
+/** Build and mount the full popup UI into `root`. */
+function mountPopup(root: HTMLElement): void {
+  // Constrain popup width (~320px) and set the warm Notion canvas.
+  root.className = joinClasses(
+    "w-[320px] box-border flex flex-col gap-md",
+    "bg-canvas-soft text-ink font-sans p-md",
+  );
+
+  // ── Header / wordmark ────────────────────────────────────────────────
+  const header = document.createElement("header");
+  header.className = "flex items-center justify-between";
+
+  const wordmark = document.createElement("h1");
+  wordmark.className = "m-0 text-title font-sans text-ink";
+  wordmark.textContent = "Alpha Cursor";
+  header.appendChild(wordmark);
+
+  // ── Global Toggle ────────────────────────────────────────────────────
+  const toggle = createToggle((enabled) => {
+    void setEnabled(enabled);
+  });
+
+  // ── Notepad section ──────────────────────────────────────────────────
+  const section = document.createElement("section");
+  section.className = "flex flex-col gap-sm";
+  section.setAttribute("aria-label", "Notepad");
+
+  const sectionHead = document.createElement("div");
+  sectionHead.className = "flex items-center justify-between gap-sm";
+
+  const sectionTitle = document.createElement("h2");
+  sectionTitle.className = "m-0 text-body-md font-sans text-ink";
+  sectionTitle.textContent = "Notepad";
+
+  const status = createStatusRegion();
+
+  const copyAllBtn = createButton({
+    variant: "utility",
+    label: "Copy All",
+    ariaLabel: "Copy all notepad entries",
+    onClick: () => {
+      void runCopyAll();
+    },
+  });
+
+  sectionHead.append(sectionTitle, copyAllBtn);
+
+  const listContainer = document.createElement("div");
+  renderNotepadList(listContainer, []);
+
+  section.append(sectionHead, listContainer, status.el);
+
+  // ── Footer: open full Options page (Req 19.1) ────────────────────────
+  const footer = document.createElement("footer");
+  footer.className = "flex items-center justify-end pt-xs border-t border-hairline";
+
+  const optionsBtn = createButton({
+    variant: "utility",
+    label: "Open Settings",
+    ariaLabel: "Open the full settings page",
+    onClick: () => {
+      if (chrome.runtime.openOptionsPage) {
+        chrome.runtime.openOptionsPage();
+      }
+    },
+  });
+  footer.appendChild(optionsBtn);
+
+  root.append(header, toggle.el, section, footer);
+
+  // ── Wire up live data ────────────────────────────────────────────────
+
+  // Toggle: seed from storage, then reflect external changes.
+  void getEnabled().then((enabled) => toggle.setState(enabled));
+  onEnabledChanged((enabled) => toggle.setState(enabled));
+
+  // Notepad: load the current entries.
+  void refreshNotepad(listContainer);
+
+  /** Re-fetch and re-render the notepad list from the background. */
+  async function refreshNotepad(target: HTMLElement): Promise<void> {
+    const response = await sendToBackground<undefined, NotepadEntry[]>(
+      NotepadMessageType.LIST,
+      undefined,
+    );
+    if (isOk(response) && Array.isArray(response.data)) {
+      renderNotepadList(target, response.data);
+    }
+  }
+
+  /**
+   * Copy All flow: ask the background to join entries, then write to the
+   * clipboard here. Empty → "Notepad is empty" (no clipboard write, Req 6.4);
+   * success → confirmation (Req 6.3); failure → error message (Req 6.5).
+   */
+  async function runCopyAll(): Promise<void> {
+    const response = await sendToBackground<undefined, NotepadCopyAllResult>(
+      NotepadMessageType.COPY_ALL,
+      undefined,
+    );
+
+    if (!isOk(response)) {
+      status.show("Couldn't read the notepad.", "error");
+      return;
+    }
+
+    const { joined, count, empty } = response.data;
+    if (empty) {
+      status.show("Notepad is empty.", "info");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(joined);
+    } catch {
+      status.show("Couldn't copy to the clipboard.", "error");
+      return;
+    }
+
+    status.show(
+      `Copied ${count} ${count === 1 ? "entry" : "entries"}.`,
+      "success",
+    );
+  }
+}
+
+const appRoot = document.getElementById("app");
+if (appRoot) {
+  mountPopup(appRoot);
+}
+
+export {};

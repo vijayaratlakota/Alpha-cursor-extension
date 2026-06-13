@@ -1,0 +1,31 @@
+{
+  "name": "alpha-cursor-extension",
+  "version": "0.1.0",
+  "description": "Alpha Cursor - a 100% client-side Chrome MV3 productivity toolkit triggered by a middle-click radial options panel.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jspdf": "^2.5.2",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.26",
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.19.21",
+    "fake-indexeddb": "^6.2.5",
+    "fast-check": "^3.23.2",
+    "jsdom": "^25.0.1",
+    "sinon-chrome": "^3.0.1",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
