@@ -34,12 +34,25 @@ vi.mock("../shared/settings", () => ({
   getEnabled: () => Promise.resolve(true),
   getCachedEnabled: () => true,
   onEnabledChanged: () => () => {},
+  getFeatureFlags: () =>
+    Promise.resolve({ dragCopy: true, notepadCapture: true, cookieRemoval: true }),
+  getCachedFeatureFlags: () => ({
+    dragCopy: true,
+    notepadCapture: true,
+    cookieRemoval: true,
+  }),
+  onFeatureFlagsChanged: () => () => {},
 }));
 
 // Cookie removal: no-op.
 vi.mock("../tools/cookies/cookieRemover", () => ({
   initCookieRemoval: vi.fn(),
   teardownCookieRemoval: vi.fn(),
+}));
+
+// Auto-copy (drag-to-copy): no-op disposer.
+vi.mock("../tools/autocopy/autoCopy", () => ({
+  initAutoCopy: vi.fn(() => () => {}),
 }));
 
 // Notepad capture: no-op disposer.

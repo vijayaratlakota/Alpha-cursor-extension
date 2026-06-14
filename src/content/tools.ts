@@ -84,8 +84,6 @@ export interface Tool {
   id: ToolId;
   /** Human-readable label rendered in the panel. */
   label: string;
-  /** Optional glyph/icon (single character or short string) for the radial button. */
-  icon?: string;
   /**
    * Applicability. `"all"` marks a context-independent tool shown in every
    * panel; an array lists the exact {@link ContextType}s the tool applies to.
@@ -115,84 +113,72 @@ const CATALOG: Tool[] = [
   {
     id: ToolId.NOTEPAD_COPY_ALL,
     label: "Copy All",
-    icon: "⎘",
     contexts: "all",
     run: comingSoon("Copy All"),
   },
   {
     id: ToolId.SEARCH_IN,
     label: "Search in",
-    icon: "🔍",
     contexts: ["selected-text"],
     run: comingSoon("Search in"),
   },
   {
     id: ToolId.SAVE_IMAGE,
     label: "Save image",
-    icon: "🖼",
     contexts: ["image"],
     run: comingSoon("Save image"),
   },
   {
     id: ToolId.MEDIA_DOWNLOAD,
     label: "Download media",
-    icon: "⬇",
     contexts: ["video"],
     run: comingSoon("Download media"),
   },
   {
     id: ToolId.TEXT_EXTRACTION,
     label: "Text extraction",
-    icon: "🅣",
     contexts: ["generic-page", "image", "video"],
     run: comingSoon("Text extraction"),
   },
   {
     id: ToolId.SAVE_TABS,
     label: "Save all tabs",
-    icon: "🗂",
     contexts: ["generic-page"],
     run: comingSoon("Save all tabs"),
   },
   {
     id: ToolId.RESTORE_TABS,
     label: "Open saved tabs",
-    icon: "📂",
     contexts: ["generic-page"],
     run: comingSoon("Open saved tabs"),
   },
   {
     id: ToolId.FULL_PAGE_SCREENSHOT,
     label: "Full page screenshot",
-    icon: "📸",
     contexts: ["generic-page"],
     run: comingSoon("Full page screenshot"),
   },
   {
     id: ToolId.COLOR_PICKER,
     label: "Color picker",
-    icon: "🎨",
     contexts: ["generic-page"],
     run: comingSoon("Color picker"),
   },
   {
     id: ToolId.VOICE_TO_TEXT,
     label: "Voice to text",
-    icon: "🎤",
     contexts: ["generic-page"],
     run: comingSoon("Voice to text"),
   },
   {
     id: ToolId.TAB_SHIFTER,
     label: "Tab shifter",
-    icon: "⇄",
     contexts: ["generic-page"],
     run: comingSoon("Tab shifter"),
   },
   {
     id: ToolId.HORIZONTAL_SCROLL,
     label: "Horizontal scroll",
-    icon: "↔",
     contexts: ["generic-page"],
     run: comingSoon("Horizontal scroll"),
   },

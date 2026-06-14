@@ -51,8 +51,13 @@ describe("MV3 manifest validity (Req 22.1)", () => {
 });
 
 describe("minimal permission declaration (Req 21.1)", () => {
-  it("declares exactly the storage/tabs/downloads permissions", () => {
-    expect(m.permissions).toEqual(["storage", "tabs", "downloads"]);
+  it("declares exactly the storage/tabs/downloads/offscreen permissions", () => {
+    expect(m.permissions).toEqual([
+      "storage",
+      "tabs",
+      "downloads",
+      "offscreen",
+    ]);
   });
 
   it("does not declare speculative permissions", () => {

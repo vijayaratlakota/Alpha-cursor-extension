@@ -33,7 +33,12 @@ import {
   type ConsentRuleset,
   type ScrollState,
 } from "./consent";
-import { getCachedEnabled, onEnabledChanged } from "../../shared/settings";
+import {
+  getCachedEnabled,
+  onEnabledChanged,
+  getCachedFeatureFlags,
+  onFeatureFlagsChanged,
+} from "../../shared/settings";
 
 /** DOM `Node.ELEMENT_NODE` constant, inlined so we need no live `Node` ref. */
 const ELEMENT_NODE = 1;
@@ -61,6 +66,8 @@ let observer: MutationObserver | null = null;
 let active = false;
 /** Disposer for the {@link onEnabledChanged} subscription, else `null`. */
 let unsubscribeEnabled: (() => void) | null = null;
+/** Disposer for the feature-flags subscription, else `null`. */
+let unsubscribeFlags: (() => void) | null = null;
 /** Disposer for a pending DOMContentLoaded listener, else `null`. */
 let detachDomReady: (() => void) | null = null;
 
@@ -304,13 +311,28 @@ function stop(): void {
  * load; calling again only ensures a single subscription.
  */
 export function initCookieRemoval(): void {
-  if (getCachedEnabled()) {
+  // Removal runs only while the global Toggle is ON AND the per-feature flag is
+  // enabled (both default to ON so it works right after install).
+  const shouldRun = (): boolean =>
+    getCachedEnabled() && getCachedFeatureFlags().cookieRemoval;
+
+  if (shouldRun()) {
     start();
   }
 
   if (!unsubscribeEnabled) {
-    unsubscribeEnabled = onEnabledChanged((enabled) => {
-      if (enabled) {
+    unsubscribeEnabled = onEnabledChanged(() => {
+      if (shouldRun()) {
+        start();
+      } else {
+        stop();
+      }
+    });
+  }
+
+  if (!unsubscribeFlags) {
+    unsubscribeFlags = onFeatureFlagsChanged(() => {
+      if (shouldRun()) {
         start();
       } else {
         stop();
@@ -329,5 +351,9 @@ export function teardownCookieRemoval(): void {
   if (unsubscribeEnabled) {
     unsubscribeEnabled();
     unsubscribeEnabled = null;
+  }
+  if (unsubscribeFlags) {
+    unsubscribeFlags();
+    unsubscribeFlags = null;
   }
 }

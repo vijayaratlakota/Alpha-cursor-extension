@@ -24,8 +24,8 @@
  */
 
 import { createShadowHost, type ShadowHostHandle } from "../ui/shadowHost";
-import { createButton } from "../ui/primitives/button";
 import { joinClasses } from "../ui/primitives/classNames";
+import { createToolIcon } from "../ui/icons";
 import { getCachedEnabled } from "../shared/settings";
 import { resolveContext, type ContextType } from "./context";
 import { resolveToolSet, type Tool, type ToolInvocation } from "./tools";
@@ -91,11 +91,15 @@ export function repositionPanel(
 }
 
 /** Default panel diameter (CSS px) used to estimate size for repositioning. */
-const PANEL_DIAMETER = 280;
+const PANEL_DIAMETER = 260;
 /** Radius of the ring the tool buttons sit on. */
-const RING_RADIUS = 96;
-/** Size of each circular tool button (matches the icon-circular `size-9`). */
-const BUTTON_SIZE = 36;
+const RING_RADIUS = 90;
+/** Size of each circular tool button. */
+const BUTTON_SIZE = 42;
+/** Edge length (CSS px) of the line icon inside each button. */
+const ICON_SIZE = 20;
+/** Gap (CSS px) between a button's outer edge and its tooltip. */
+const TOOLTIP_GAP = 10;
 
 /** Module-level handle to the currently open panel, if any. */
 let activeHandle: ShadowHostHandle | null = null;
@@ -109,9 +113,136 @@ function currentViewport(): Viewport {
 }
 
 /**
- * Builds the radial panel element: an elevated Notion surface with the tools'
- * circular icon buttons distributed evenly around a ring. Selecting a button
- * closes the panel and invokes the tool's `run` (Req 2.10).
+ * Builds a Wise-styled tooltip for a tool button (Req 2.13, 2.14). The tooltip
+ * carries the tool's full descriptive `label`, is rendered inside the same
+ * closed Shadow DOM beside its button, and fades via an `ease-out` opacity
+ * transition gated behind `prefers-reduced-motion` (handled in the panel
+ * stylesheet) so reduced-motion users get an instant, motionless tooltip
+ * (Req 20.6). It is `aria-hidden` because the button already exposes the same
+ * text via `aria-label` (Req 20.7).
+ *
+ * Colors are fixed Wise-dark values (`.acx-tip`) so the label reads correctly
+ * regardless of the host page's color scheme.
+ */
+function buildTooltip(label: string): HTMLElement {
+  const tooltip = document.createElement("div");
+  tooltip.setAttribute("role", "tooltip");
+  tooltip.setAttribute("aria-hidden", "true");
+  tooltip.textContent = label;
+  tooltip.className = "acx-tip";
+  return tooltip;
+}
+
+/** Reveals a tooltip built by {@link buildTooltip}. */
+function showTooltip(tooltip: HTMLElement): void {
+  tooltip.classList.add("acx-tip-show");
+}
+
+/** Hides a tooltip built by {@link buildTooltip}. */
+function hideTooltip(tooltip: HTMLElement): void {
+  tooltip.classList.remove("acx-tip-show");
+}
+
+/**
+ * One-time-per-panel `<style>` block carrying the dark Wise hub treatment, the
+ * entrance keyframes, the per-button hover/focus state (icon turns lime-green),
+ * and the beside-the-icon tooltip. Injected into the panel element so it lives
+ * inside the closed Shadow DOM with FIXED dark color values — the panel renders
+ * in the brand's "ink + green" dark moment regardless of the host page's or the
+ * token cascade's color scheme (Req 20.8). Motion is disabled under
+ * `prefers-reduced-motion` (Req 20.6, 2.14); only color changes remain.
+ */
+function buildPanelStyles(): HTMLStyleElement {
+  const style = document.createElement("style");
+  style.textContent = `
+    .acx-radial {
+      background:
+        radial-gradient(135% 135% at 50% 0%,
+          rgba(32, 36, 26, 0.86) 0%,
+          rgba(20, 22, 15, 0.82) 58%,
+          rgba(14, 15, 12, 0.86) 100%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+        rgba(0, 0, 0, 0.45) 0px 12px 40px,
+        rgba(0, 0, 0, 0.55) 0px 32px 64px;
+    }
+    .acx-hint {
+      color: rgba(255, 255, 255, 0.34);
+    }
+    .acx-tool {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
+      color: #f4f6f0;
+      cursor: pointer;
+      border-radius: 9999px;
+      padding: 0;
+      outline: none;
+      transition: background-color 160ms ease-out, color 160ms ease-out,
+        border-color 160ms ease-out, box-shadow 160ms ease-out,
+        transform 160ms ease-out;
+    }
+    .acx-tool:hover,
+    .acx-tool:focus-visible {
+      /* Icon turns lime-green; the hub stays dark (Wise reference). */
+      color: #9fe870;
+      background: rgba(159, 232, 112, 0.12);
+      border-color: rgba(159, 232, 112, 0.45);
+      box-shadow: 0 0 0 6px rgba(159, 232, 112, 0.16);
+    }
+    .acx-tip {
+      position: absolute;
+      z-index: 20;
+      pointer-events: none;
+      white-space: nowrap;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(35, 38, 28, 0.82);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      backdrop-filter: blur(14px) saturate(160%);
+      color: #f4f6f0;
+      padding: 6px 12px;
+      font-family: var(--acx-font-sans, "Inter", system-ui, sans-serif);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.2;
+      box-shadow: rgba(0, 0, 0, 0.45) 0px 8px 24px;
+      opacity: 0;
+    }
+    .acx-tip-show { opacity: 1; }
+    @media (prefers-reduced-motion: no-preference) {
+      .acx-radial { animation: acx-radial-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .acx-tool {
+        animation: acx-tool-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+      .acx-tool:hover,
+      .acx-tool:focus-visible { transform: scale(1.08); }
+      .acx-tip { transition: opacity 140ms ease-out; }
+    }
+    @keyframes acx-radial-in {
+      from { opacity: 0; transform: scale(0.86); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes acx-tool-in {
+      from { opacity: 0; transform: scale(0.5); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+  `;
+  return style;
+}
+
+/**
+ * Builds the radial panel element: an elevated dark Wise hub with the tools'
+ * large circular line-icon buttons distributed evenly around a ring. Icons are
+ * white by default and turn lime-green on hover/focus, with a styled tooltip
+ * showing the tool's full name BESIDE the icon. Selecting a button closes the
+ * panel and invokes the tool's `run` (Req 2.10, 2.11, 2.12, 2.13).
  */
 function buildPanel(
   tools: Tool[],
@@ -122,34 +253,55 @@ function buildPanel(
   panel.setAttribute("role", "menu");
   panel.setAttribute("aria-label", "Alpha Cursor options");
   // Re-enable pointer events (the host is passthrough), size the radial area,
-  // and lift it onto the page with the Notion elevated surface treatment.
+  // and lift it onto the page. `overflow-visible` lets the tooltips spill
+  // outside the rounded hub.
   panel.className = joinClasses(
-    "pointer-events-auto relative box-border rounded-full",
-    "bg-surface border border-hairline acx-elevated",
+    "acx-radial pointer-events-auto relative box-border rounded-full overflow-visible",
   );
   panel.style.width = `${PANEL_DIAMETER}px`;
   panel.style.height = `${PANEL_DIAMETER}px`;
+  panel.appendChild(buildPanelStyles());
 
   const center = PANEL_DIAMETER / 2;
   const count = tools.length;
 
+  // Center hint label so the empty hub doesn't read as a dead zone. Decorative
+  // (the tools carry the accessible names), so hidden from assistive tech.
+  const hint = document.createElement("div");
+  hint.setAttribute("aria-hidden", "true");
+  hint.textContent = "Alpha Cursor";
+  hint.className = joinClasses(
+    "acx-hint absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
+    "font-sans text-caption font-semibold tracking-wide select-none pointer-events-none",
+  );
+  panel.appendChild(hint);
+
   tools.forEach((tool, index) => {
     const invocation: ToolInvocation = { context, point };
-    const button = createButton({
-      variant: "icon-circular",
-      icon: tool.icon ?? tool.label.charAt(0),
-      ariaLabel: tool.label,
-      onClick: () => {
-        // Select → close, then invoke the tool (Req 2.10).
-        closePanel();
-        void Promise.resolve(tool.run(invocation)).catch(() => {
-          /* tool handlers surface their own failures via notify() */
-        });
-      },
-    });
+
+    // Large circular line-icon button (Wise reference proportions). Built with
+    // the shared `.acx-tool` class (defined in buildPanelStyles) so it carries
+    // the white→green icon hover treatment and a large 56px hit area (Req 2.12).
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "acx-tool";
     button.setAttribute("role", "menuitem");
-    button.setAttribute("title", tool.label);
+    button.setAttribute("aria-label", tool.label);
     button.style.position = "absolute";
+    button.style.width = `${BUTTON_SIZE}px`;
+    button.style.height = `${BUTTON_SIZE}px`;
+    // Stagger each tool's entrance slightly for a friendly fan-in.
+    button.style.animationDelay = `${40 + index * 22}ms`;
+
+    button.appendChild(createToolIcon(tool.id, ICON_SIZE));
+
+    button.addEventListener("click", () => {
+      // Select → close, then invoke the tool (Req 2.10).
+      closePanel();
+      void Promise.resolve(tool.run(invocation)).catch(() => {
+        /* tool handlers surface their own failures via notify() */
+      });
+    });
 
     // Evenly distribute around the ring, starting at the top (−90°).
     const angle = count === 0 ? 0 : (index / count) * Math.PI * 2 - Math.PI / 2;
@@ -158,7 +310,30 @@ function buildPanel(
     button.style.left = `${cx - BUTTON_SIZE / 2}px`;
     button.style.top = `${cy - BUTTON_SIZE / 2}px`;
 
+    // Tooltip with the tool's full name placed BESIDE the icon (Req 2.13) —
+    // to the right for buttons on the right half, to the left for the left half
+    // — vertically centered on the button so it never sits on top of the icon.
+    // Shown on hover AND keyboard focus / hidden on leave AND blur.
+    const tooltip = buildTooltip(tool.label);
+    const onRightHalf = cx >= center;
+    tooltip.style.top = `${cy}px`;
+    if (onRightHalf) {
+      tooltip.style.left = `${cx + BUTTON_SIZE / 2 + TOOLTIP_GAP}px`;
+      tooltip.style.transform = "translateY(-50%)";
+    } else {
+      tooltip.style.left = `${cx - BUTTON_SIZE / 2 - TOOLTIP_GAP}px`;
+      tooltip.style.transform = "translate(-100%, -50%)";
+    }
+
+    const reveal = (): void => showTooltip(tooltip);
+    const conceal = (): void => hideTooltip(tooltip);
+    button.addEventListener("mouseenter", reveal);
+    button.addEventListener("focus", reveal);
+    button.addEventListener("mouseleave", conceal);
+    button.addEventListener("blur", conceal);
+
     panel.appendChild(button);
+    panel.appendChild(tooltip);
   });
 
   return panel;
@@ -181,6 +356,10 @@ export function openPanel(context: ContextType, point: Point): void {
     overlay: "anchored",
     point: origin,
     surfaceId: "options-panel",
+    // Wise "ink + green" polarity: the radial hub is the brand's dark moment
+    // (near-black olive canvas) carrying the lime-green accent, matching the
+    // reference UI regardless of the host page's color scheme (Req 20.8).
+    theme: "dark",
   });
   activeHandle = handle;
 

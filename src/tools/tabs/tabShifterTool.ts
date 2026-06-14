@@ -28,7 +28,13 @@
 import { createShadowHost, type ShadowHostHandle } from "../../ui/shadowHost";
 import { joinClasses } from "../../ui/primitives/classNames";
 import { notify } from "../../ui/notify";
-import { createMessage, isOk, type Response } from "../../shared/messaging";
+import {
+  createMessage,
+  isOk,
+  isContextInvalidated,
+  CONTEXT_INVALIDATED_MESSAGE,
+  type Response,
+} from "../../shared/messaging";
 import {
   registerTool,
   ToolId,
@@ -41,12 +47,38 @@ import {
   type TabActivateResult,
 } from "../../background/tabShifterHandlers";
 
-/** Diameter (CSS px) of the radial tab panel — matches the Options_Panel hub. */
-const PANEL_DIAMETER = 280;
-/** Radius of the ring the tab buttons sit on. */
-const RING_RADIUS = 104;
 /** Diameter of each circular tab button. */
-const BUTTON_SIZE = 44;
+const BUTTON_SIZE = 48;
+/** Gap between adjacent buttons around the ring (min arc spacing). */
+const MIN_BUTTON_GAP = 16;
+/** Padding between the ring of buttons and the panel edge. */
+const RING_PADDING = 44;
+/** Smallest the hub is ever drawn, even with one or two tabs. */
+const MIN_PANEL_DIAMETER = 150;
+
+/**
+ * Compute a panel diameter + ring radius that fit `count` buttons comfortably,
+ * so the hub shrinks when there are few tabs (no giant empty circle) and grows
+ * only as needed. The ring circumference must hold every button plus the gaps;
+ * we solve for the radius from the required circumference and clamp to a sane
+ * minimum.
+ */
+function computeLayout(count: number): { diameter: number; ringRadius: number } {
+  if (count <= 1) {
+    // A single tab sits dead-center; just a compact hub around one button.
+    const diameter = Math.max(MIN_PANEL_DIAMETER, BUTTON_SIZE + RING_PADDING * 2);
+    return { diameter, ringRadius: 0 };
+  }
+  // Each button needs an arc slot of (button + gap); circumference = slots.
+  const slot = BUTTON_SIZE + MIN_BUTTON_GAP;
+  const circumference = slot * count;
+  const ringRadius = Math.max(BUTTON_SIZE, circumference / (2 * Math.PI));
+  const diameter = Math.max(
+    MIN_PANEL_DIAMETER,
+    ringRadius * 2 + BUTTON_SIZE + RING_PADDING,
+  );
+  return { diameter, ringRadius };
+}
 
 /** Module-level handle to the currently open tab-shifter panel, if any. */
 let activePanel: ShadowHostHandle | null = null;
@@ -59,17 +91,35 @@ let activePanel: ShadowHostHandle | null = null;
  */
 function sendToBackground<T, R>(type: string, payload: T): Promise<Response<R>> {
   return new Promise<Response<R>>((resolve) => {
+    // The extension may have been reloaded/updated while this content script is
+    // still alive on the page; in that state `chrome.runtime` calls throw
+    // "Extension context invalidated". Detect it up front and surface a clear
+    // "refresh the page" message instead of the raw Chrome error.
+    if (isContextInvalidated(undefined)) {
+      resolve({
+        ok: false,
+        error: {
+          code: "UNKNOWN",
+          message: CONTEXT_INVALIDATED_MESSAGE,
+          recoverable: true,
+        },
+      });
+      return;
+    }
     try {
       chrome.runtime.sendMessage(
         createMessage(type, payload),
         (response: Response<R>) => {
           const lastError = chrome.runtime?.lastError;
           if (lastError || !response) {
+            const invalidated = isContextInvalidated(lastError?.message);
             resolve({
               ok: false,
               error: {
                 code: "UNKNOWN",
-                message: lastError?.message ?? "No response from background.",
+                message: invalidated
+                  ? CONTEXT_INVALIDATED_MESSAGE
+                  : (lastError?.message ?? "No response from background."),
                 recoverable: true,
               },
             });
@@ -83,7 +133,11 @@ function sendToBackground<T, R>(type: string, payload: T): Promise<Response<R>> 
         ok: false,
         error: {
           code: "UNKNOWN",
-          message: cause instanceof Error ? cause.message : String(cause),
+          message: isContextInvalidated(cause)
+            ? CONTEXT_INVALIDATED_MESSAGE
+            : cause instanceof Error
+              ? cause.message
+              : String(cause),
           recoverable: true,
         },
       });
@@ -127,9 +181,11 @@ function buildFavicon(tab: LightTab): HTMLElement {
     const placeholder = document.createElement("span");
     placeholder.setAttribute("aria-hidden", "true");
     placeholder.className = joinClasses(
-      "inline-flex items-center justify-center size-5 rounded-full",
-      "bg-fill-subtle text-ink-muted text-eyebrow font-sans font-semibold",
+      "inline-flex items-center justify-center size-6 rounded-full",
+      "text-eyebrow font-sans font-semibold",
     );
+    placeholder.style.background = "rgba(255, 255, 255, 0.12)";
+    placeholder.style.color = "#f4f6f0";
     placeholder.textContent = placeholderGlyph(tab.title);
     return placeholder;
   };
@@ -139,7 +195,7 @@ function buildFavicon(tab: LightTab): HTMLElement {
     img.src = tab.favIconUrl;
     img.alt = "";
     img.setAttribute("aria-hidden", "true");
-    img.className = "size-5 rounded-sm object-contain";
+    img.className = "size-6 rounded-sm object-contain";
     // Swap to the placeholder if the favicon fails to load (Req 17.5).
     img.addEventListener("error", () => {
       img.replaceWith(makePlaceholder());
@@ -177,13 +233,9 @@ function buildTabButton(tab: LightTab): HTMLElement {
   button.setAttribute("role", "menuitem");
   button.setAttribute("aria-label", label);
   button.title = label;
-  button.className = joinClasses(
-    "absolute inline-flex items-center justify-center",
-    "bg-surface border border-hairline rounded-full shadow-soft cursor-pointer",
-    "hover:bg-fill-hover focus-visible:outline-2",
-    "focus-visible:outline-offset-2 focus-visible:outline-primary",
-    "motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-90",
-  );
+  // Dark translucent tab button matching the radial Options_Panel buttons.
+  button.className = "acx-tab-btn";
+  button.style.position = "absolute";
   button.style.width = `${BUTTON_SIZE}px`;
   button.style.height = `${BUTTON_SIZE}px`;
   button.style.padding = "0";
@@ -199,28 +251,88 @@ function buildTabButton(tab: LightTab): HTMLElement {
 }
 
 /**
- * Build the radial panel element: an elevated Notion surface with one circular
- * tab button distributed evenly around a ring (Req 17.2). With no tabs to show
- * a quiet "No tabs" label is centered instead.
+ * One-time-per-panel `<style>` block: the dark translucent hub + tab buttons
+ * (matching the radial Options_Panel) and a soft scale/fade entrance, gated
+ * behind `prefers-reduced-motion`.
+ */
+function buildPanelStyles(): HTMLStyleElement {
+  const style = document.createElement("style");
+  style.textContent = `
+    .acx-tabwheel {
+      background:
+        radial-gradient(135% 135% at 50% 0%,
+          rgba(32, 36, 26, 0.86) 0%,
+          rgba(20, 22, 15, 0.82) 58%,
+          rgba(14, 15, 12, 0.86) 100%);
+      -webkit-backdrop-filter: blur(20px) saturate(160%);
+      backdrop-filter: blur(20px) saturate(160%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+        rgba(0, 0, 0, 0.45) 0px 12px 40px,
+        rgba(0, 0, 0, 0.55) 0px 32px 64px;
+    }
+    .acx-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f4f6f0;
+      cursor: pointer;
+      border-radius: 9999px;
+      outline: none;
+      transition: background-color 160ms ease-out, border-color 160ms ease-out,
+        box-shadow 160ms ease-out, transform 160ms ease-out;
+    }
+    .acx-tab-btn:hover,
+    .acx-tab-btn:focus-visible {
+      background: rgba(159, 232, 112, 0.16);
+      border-color: rgba(159, 232, 112, 0.5);
+      box-shadow: 0 0 0 5px rgba(159, 232, 112, 0.16);
+    }
+    .acx-tab-empty { color: rgba(255, 255, 255, 0.5); }
+    @media (prefers-reduced-motion: no-preference) {
+      .acx-tabwheel { animation: acx-tabwheel-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .acx-tab-btn:hover,
+      .acx-tab-btn:focus-visible { transform: scale(1.08); }
+    }
+    @keyframes acx-tabwheel-in {
+      from { opacity: 0; transform: scale(0.88); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+  `;
+  return style;
+}
+
+/**
+ * Build the radial panel element sized to the tab count: a dark translucent hub
+ * with one circular tab button per open tab distributed evenly around a ring
+ * (Req 17.2). The hub shrinks for few tabs (no giant empty circle) and a single
+ * tab sits centered. With no tabs a quiet "No tabs" label is centered.
  */
 function buildPanel(tabs: LightTab[]): HTMLElement {
+  const count = tabs.length;
+  const { diameter, ringRadius } = computeLayout(count);
+
   const panel = document.createElement("div");
   panel.setAttribute("role", "menu");
   panel.setAttribute("aria-label", "Switch tab");
   panel.className = joinClasses(
-    "pointer-events-auto relative box-border rounded-full",
-    "bg-surface border border-hairline acx-elevated",
+    "acx-tabwheel pointer-events-auto relative box-border rounded-full",
   );
-  panel.style.width = `${PANEL_DIAMETER}px`;
-  panel.style.height = `${PANEL_DIAMETER}px`;
+  panel.style.width = `${diameter}px`;
+  panel.style.height = `${diameter}px`;
+  panel.appendChild(buildPanelStyles());
 
-  const center = PANEL_DIAMETER / 2;
+  const center = diameter / 2;
 
-  if (tabs.length === 0) {
+  if (count === 0) {
     const empty = document.createElement("span");
     empty.className = joinClasses(
-      "absolute -translate-x-1/2 -translate-y-1/2",
-      "text-ink-muted text-body-sm font-sans",
+      "acx-tab-empty absolute -translate-x-1/2 -translate-y-1/2",
+      "text-body-sm font-sans",
     );
     empty.style.left = `${center}px`;
     empty.style.top = `${center}px`;
@@ -229,15 +341,20 @@ function buildPanel(tabs: LightTab[]): HTMLElement {
     return panel;
   }
 
-  const count = tabs.length;
   tabs.forEach((tab, index) => {
     const button = buildTabButton(tab);
-    // Evenly distribute around the ring, starting at the top (−90°).
-    const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
-    const cx = center + Math.cos(angle) * RING_RADIUS;
-    const cy = center + Math.sin(angle) * RING_RADIUS;
-    button.style.left = `${cx - BUTTON_SIZE / 2}px`;
-    button.style.top = `${cy - BUTTON_SIZE / 2}px`;
+    if (count === 1) {
+      // Single tab: dead center.
+      button.style.left = `${center - BUTTON_SIZE / 2}px`;
+      button.style.top = `${center - BUTTON_SIZE / 2}px`;
+    } else {
+      // Evenly distribute around the ring, starting at the top (−90°).
+      const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+      const cx = center + Math.cos(angle) * ringRadius;
+      const cy = center + Math.sin(angle) * ringRadius;
+      button.style.left = `${cx - BUTTON_SIZE / 2}px`;
+      button.style.top = `${cy - BUTTON_SIZE / 2}px`;
+    }
     panel.appendChild(button);
   });
 

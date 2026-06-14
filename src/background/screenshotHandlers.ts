@@ -69,6 +69,13 @@ export const ScreenshotMessageType = {
    * {@link ScreenshotCheckpointPayload}; returns {@link ScreenshotCheckpointResult}.
    */
   CHECKPOINT: "SCREENSHOT_CHECKPOINT",
+  /**
+   * Update the toolbar action badge with capture progress so the user sees a
+   * progress indicator that lives OUTSIDE the page and therefore can never be
+   * captured into the screenshot. Payload {@link ScreenshotProgressPayload};
+   * returns {@link ScreenshotProgressResult}.
+   */
+  PROGRESS: "SCREENSHOT_PROGRESS",
 } as const;
 
 /** Result of a {@link ScreenshotMessageType.CAPTURE_VISIBLE} request. */
@@ -126,6 +133,20 @@ export interface ScreenshotCheckpointPayload {
 export interface ScreenshotCheckpointResult {
   /** `true` when the checkpoint was written; `false` when it was cleared. */
   written: boolean;
+}
+
+/** Payload for {@link ScreenshotMessageType.PROGRESS}. */
+export interface ScreenshotProgressPayload {
+  /** Fractional progress in `[0, 1]`. Ignored when {@link done} is `true`. */
+  progress?: number;
+  /** When `true`, clear the badge (capture finished or failed). */
+  done?: boolean;
+}
+
+/** Result of a {@link ScreenshotMessageType.PROGRESS} request. */
+export interface ScreenshotProgressResult {
+  /** `true` when the badge was updated; `false` when it was cleared. */
+  shown: boolean;
 }
 
 /** Max attempts for a single `captureVisibleTab` call before giving up. */
@@ -285,6 +306,59 @@ export async function readScreenshotCheckpoint(
 }
 
 /**
+ * Update the toolbar action badge to reflect capture progress. The badge lives
+ * on the extension's toolbar icon — completely OUTSIDE the page — so it gives
+ * the user a live progress indicator that `captureVisibleTab` can never include
+ * in the screenshot and that never covers page content. Best-effort: a missing
+ * `chrome.action` API (or any failure) is swallowed so it never aborts a
+ * capture.
+ *
+ * While capturing, the badge shows the percentage (e.g. `42`) on a lime-green
+ * Wise background; when `done` is set the badge is cleared.
+ */
+async function updateProgressBadge(
+  payload: ScreenshotProgressPayload,
+): Promise<ScreenshotProgressResult> {
+  const action = (chrome as { action?: typeof chrome.action }).action;
+  if (!action) {
+    return { shown: false };
+  }
+
+  try {
+    if (payload?.done === true) {
+      await action.setBadgeText({ text: "" });
+      if (typeof action.setTitle === "function") {
+        await action.setTitle({ title: "Alpha Cursor" });
+      }
+      return { shown: false };
+    }
+
+    const fraction =
+      typeof payload?.progress === "number" && Number.isFinite(payload.progress)
+        ? Math.min(1, Math.max(0, payload.progress))
+        : 0;
+    const pct = Math.round(fraction * 100);
+
+    if (typeof action.setBadgeBackgroundColor === "function") {
+      // Lime-green Wise primary.
+      await action.setBadgeBackgroundColor({ color: "#9fe870" });
+    }
+    if (typeof action.setBadgeTextColor === "function") {
+      // Dark ink text on the green badge (the Wise contrast).
+      await action.setBadgeTextColor({ color: "#0e0f0c" });
+    }
+    await action.setBadgeText({ text: String(pct) });
+    if (typeof action.setTitle === "function") {
+      await action.setTitle({ title: `Capturing full page… ${pct}%` });
+    }
+    return { shown: true };
+  } catch {
+    // Badge updates are purely cosmetic; never let them break a capture.
+    return { shown: false };
+  }
+}
+
+/**
  * Register the screenshot capture + download + checkpoint handlers on the
  * background router. Idempotent; safe to call on every service-worker wake.
  * Wired from `src/background/index.ts` (not edited by this task).
@@ -307,5 +381,10 @@ export function installScreenshot(): void {
   registerHandler<ScreenshotCheckpointPayload, ScreenshotCheckpointResult>(
     ScreenshotMessageType.CHECKPOINT,
     (payload) => writeCheckpoint(payload),
+  );
+
+  registerHandler<ScreenshotProgressPayload, ScreenshotProgressResult>(
+    ScreenshotMessageType.PROGRESS,
+    (payload) => updateProgressBadge(payload),
   );
 }

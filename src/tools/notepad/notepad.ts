@@ -108,6 +108,10 @@ export const NotepadMessageType = {
   COPY_ALL: "NOTEPAD_COPY_ALL",
   /** List all entries (for the popup, task 24): returns {@link NotepadEntry}[]. */
   LIST: "NOTEPAD_LIST",
+  /** Remove a single entry by id (undo): payload {@link NotepadRemovePayload}. */
+  REMOVE: "NOTEPAD_REMOVE",
+  /** Clear every entry for the active profile: returns {@link ClearNotepadResult}. */
+  CLEAR: "NOTEPAD_CLEAR",
 } as const;
 
 /** Union of the notepad message `type` string literals. */
@@ -120,6 +124,18 @@ export interface NotepadAppendPayload {
   text: string;
   /** Optional originating page URL (Req 4.3). */
   sourceUrl?: string;
+}
+
+/** Payload for `NOTEPAD_REMOVE` (undo of a captured entry). */
+export interface NotepadRemovePayload {
+  /** The id of the {@link NotepadEntry} to remove. */
+  id: string;
+}
+
+/** Result of `NOTEPAD_REMOVE`. */
+export interface NotepadRemoveResult {
+  /** `true` when an entry was found and removed. */
+  removed: boolean;
 }
 
 /** Result of `NOTEPAD_APPEND`. */
@@ -285,6 +301,45 @@ export async function appendEntry(
   }
 
   return { entry, quotaExceeded };
+}
+
+/**
+ * Remove a single {@link NotepadEntry} by id (the undo path for an accidental
+ * auto-copy capture). Deletes the entry record, drops its id from the ordered
+ * {@link NotepadIndex}, and removes any IndexedDB overflow blob. `lastSeq` is
+ * left untouched so subsequent appends keep a strictly increasing `seq`.
+ *
+ * @returns `{ removed: true }` when the entry existed in the index.
+ */
+export async function removeEntry(id: string): Promise<NotepadRemoveResult> {
+  const profileId = await requireProfile();
+  const index = await readIndex(profileId);
+  if (!index.entryIds.includes(id)) {
+    return { removed: false };
+  }
+
+  // Drop the overflow blob first so no orphan is left behind.
+  const entry = await getLocal<NotepadEntry>(entryKey(profileId, id));
+  if (entry?.blobRef) {
+    try {
+      await deleteBlob(entry.blobRef);
+    } catch {
+      /* best-effort */
+    }
+  }
+  try {
+    await removeLocal(entryKey(profileId, id));
+  } catch {
+    /* best-effort */
+  }
+
+  const nextIndex: NotepadIndex = {
+    lastSeq: index.lastSeq,
+    entryIds: index.entryIds.filter((entryId) => entryId !== id),
+  };
+  await setLocal<NotepadIndex>(indexKey(profileId), nextIndex);
+
+  return { removed: true };
 }
 
 /** Resolve an entry's full text, reading the overflow blob when present. */

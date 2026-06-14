@@ -37,19 +37,23 @@ export interface CreateCardOptions {
 }
 
 /**
- * Base card chrome: white surface, ink text, body-md type, 12px radius, 24px
- * padding. The hairline border provides the default flat elevation.
+ * Base card chrome shared by all variants: ink text, body-md type, 12px radius,
+ * 24px padding. The surface fill + border are variant-specific (the elevated
+ * "glass" variant supplies its own translucent fill + border).
  */
-const BASE_CLASSES =
-  "bg-surface text-ink text-body-md font-sans rounded-lg p-lg border border-hairline";
+const BASE_CLASSES = "text-ink text-body-md font-sans rounded-lg p-md";
+
+/** Flat-only chrome: opaque surface + hairline border (Notion Level 0). */
+const FLAT_SURFACE_CLASSES = "bg-surface border border-hairline";
 
 /** Variant overlays on top of {@link BASE_CLASSES}. */
 const VARIANT_CLASSES: Record<CardVariant, string> = {
-  flat: "",
-  // Premium elevation: the layered Level-2 shadow plus a faint top edge
-  // highlight on dark surfaces (see `.acx-elevated` in tailwind.css), on a
-  // slightly raised surface so dialogs/menus pop cleanly in dark mode.
-  elevated: "bg-surface-raised acx-elevated",
+  flat: FLAT_SURFACE_CLASSES,
+  // Premium elevation: a translucent "glass" surface (backdrop blur + subtle
+  // page show-through) with the layered Level-2 shadow and a faint top edge
+  // highlight (see `.acx-glass` / `.acx-enter` in tailwind.css), plus a soft
+  // scale+lift entrance. Used for floating dialogs / menus / panels.
+  elevated: "acx-glass acx-enter",
 };
 
 /**

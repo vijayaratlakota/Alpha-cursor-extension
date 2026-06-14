@@ -379,6 +379,14 @@ function isPermissionError(code: SpeechRecognitionErrorCode): boolean {
 }
 
 /**
+ * Module-level teardown for the single active voice session. Clicking "Voice to
+ * text" again (or invoking it while one is open) must REPLACE the existing
+ * panel, not stack a new one on top (fixes the duplicate-panels bug). We keep a
+ * single disposer and run it before starting a new session.
+ */
+let activeVoiceTeardown: (() => void) | null = null;
+
+/**
  * The Voice to Text `run` handler installed into the Options_Panel catalog.
  *
  * Captures the editable target focused at start, mounts the mic panel, and
@@ -389,6 +397,12 @@ function isPermissionError(code: SpeechRecognitionErrorCode): boolean {
 export const runVoiceToText: ToolRun = (
   invocation: ToolInvocation,
 ): void => {
+  // Replace any voice panel already open so repeated clicks never stack panels.
+  if (activeVoiceTeardown) {
+    activeVoiceTeardown();
+    activeVoiceTeardown = null;
+  }
+
   const RecognitionCtor = resolveRecognitionCtor();
   if (!RecognitionCtor) {
     // No Web Speech API in this browser — notify and stop (Req 16.2).
@@ -417,7 +431,11 @@ export const runVoiceToText: ToolRun = (
       // Aborting an already-stopped recognition can throw; ignore.
     }
     panel?.handle.destroy();
+    if (activeVoiceTeardown === teardown) {
+      activeVoiceTeardown = null;
+    }
   };
+  activeVoiceTeardown = teardown;
 
   panel = createVoicePanel(invocation, target, teardown);
 

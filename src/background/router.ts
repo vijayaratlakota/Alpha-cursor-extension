@@ -143,6 +143,11 @@ export function installRouter(): void {
       sender: chrome.runtime.MessageSender,
       sendResponse: (response: Response) => void,
     ): boolean => {
+      // Messages addressed to the offscreen document are handled there, not by
+      // the background router. Ignore them so the channel isn't answered twice.
+      if (message && message.target === "offscreen") {
+        return false;
+      }
       dispatch(message, sender).then(sendResponse, (unexpected) => {
         // `dispatch` is designed never to reject, but guard the channel anyway
         // so a programming error never leaves the sender hanging.

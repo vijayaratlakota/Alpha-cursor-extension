@@ -52,10 +52,10 @@ export interface CreateTextInputOptions {
  * requirements; the soft shadow on focus matches the DESIGN.md spec.
  */
 const BASE_CLASSES =
-  "bg-surface text-ink text-body-sm font-sans rounded-xs p-[6px] border border-hairline " +
+  "bg-surface text-ink text-body-md font-sans rounded-md px-lg py-md border border-hairline-strong " +
   "placeholder:text-ink-faint outline-none " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary " +
-  "focus:shadow-soft disabled:opacity-50 disabled:cursor-not-allowed";
+  "disabled:opacity-50 disabled:cursor-not-allowed";
 
 /**
  * Creates a Notion-styled text input.

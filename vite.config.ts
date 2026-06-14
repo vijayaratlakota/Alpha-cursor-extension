@@ -4,6 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { crx } from "@crxjs/vite-plugin";
 import manifest from "./manifest.config";
 
+// Absolute path to the OCR offscreen document HTML. It is not referenced by any
+// manifest field (offscreen docs are created at runtime via chrome.offscreen),
+// so it must be declared as an explicit Rollup input to be built + emitted.
+const offscreenHtml = fileURLToPath(
+  new URL("./src/offscreen/index.html", import.meta.url),
+);
+
 // Build config for the Alpha Cursor MV3 extension.
 //
 // - `@crxjs/vite-plugin` (crx) consumes the MV3 manifest and wires the bundled
@@ -26,5 +33,12 @@ export default defineConfig({
     // multiple MB; raise the warning threshold so expected large local assets
     // don't surface as build noise. They are still shipped locally, never remote.
     chunkSizeWarningLimit: 4096,
+    rollupOptions: {
+      // The OCR offscreen document is created at runtime (chrome.offscreen) and
+      // isn't a manifest entry, so declare it explicitly so Vite builds it.
+      input: {
+        offscreen: offscreenHtml,
+      },
+    },
   },
 });

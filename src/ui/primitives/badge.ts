@@ -39,8 +39,8 @@ export interface CreateBadgeOptions {
  * shape, tight 4px/8px padding.
  */
 const BASE_CLASSES =
-  "inline-flex items-center bg-surface text-primary text-eyebrow font-sans " +
-  "rounded-full px-xs py-[4px]";
+  "inline-flex items-center bg-primary-pale text-positive-deep text-eyebrow font-semibold font-sans " +
+  "rounded-full px-md py-xs";
 
 /**
  * Creates a Notion-styled badge / eyebrow pill.

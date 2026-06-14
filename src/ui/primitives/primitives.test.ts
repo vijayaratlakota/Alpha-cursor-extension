@@ -42,31 +42,32 @@ describe("createButton — Notion-token conformance snapshots (Req 20.1, 20.2)",
     });
   }
 
-  it("primary button carries the Notion blue pill chrome (bg-primary/text-on-primary/rounded-full)", () => {
+  it("primary button carries the Wise green CTA chrome (bg-primary/text-on-primary/rounded-lg)", () => {
     const button = createButton({ variant: "primary", label: "Get started" });
     expect(button.className).toContain("bg-primary");
+    // Wise green carries DARK ink text (on-primary), not white.
     expect(button.className).toContain("text-on-primary");
-    expect(button.className).toContain("text-button");
-    expect(button.className).toContain("rounded-full");
-    // pressed state stays on the darker primary-active token.
+    expect(button.className).toContain("text-body-sm");
+    // Compact rounded pill geometry for injected surfaces.
+    expect(button.className).toContain("rounded-lg");
+    // pressed state stays on the lighter primary-active token.
     expect(button.className).toContain("active:bg-primary-active");
   });
 
-  it("secondary button uses the white surface pill with the soft shadow", () => {
+  it("secondary button uses the sage surface with the compact pill geometry", () => {
     const button = createButton({ variant: "secondary", label: "Request a demo" });
-    expect(button.className).toContain("bg-surface");
+    expect(button.className).toContain("bg-canvas-soft");
     expect(button.className).toContain("text-ink");
-    expect(button.className).toContain("rounded-full");
-    expect(button.className).toContain("shadow-soft");
+    expect(button.className).toContain("rounded-lg");
   });
 
-  it("utility button uses the tighter 8px radius and a hairline border", () => {
-    const button = createButton({ variant: "utility", label: "Get Notion free" });
+  it("utility button uses the tighter 12px radius and a hairline border", () => {
+    const button = createButton({ variant: "utility", label: "Get started free" });
     expect(button.className).toContain("rounded-md");
     expect(button.className).toContain("border");
-    expect(button.className).toContain("border-hairline");
-    // utility deliberately never uses the pill radius reserved for CTAs.
-    expect(button.className).not.toContain("rounded-full");
+    expect(button.className).toContain("border-hairline-strong");
+    // utility deliberately never uses the CTA pill geometry.
+    expect(button.className).not.toContain("rounded-xl");
   });
 
   it("icon-circular button is a circular translucent control", () => {
@@ -76,12 +77,12 @@ describe("createButton — Notion-token conformance snapshots (Req 20.1, 20.2)",
       icon: "▶",
     });
     expect(button.className).toContain("rounded-full");
-    expect(button.className).toContain("size-9");
+    expect(button.className).toContain("size-8");
   });
 });
 
 describe("createButton — reserved focus ring & reduced motion (Req 20.3, 20.5)", () => {
-  it("renders the reserved primary-blue focus-visible outline", () => {
+  it("renders the reserved brand-accent focus-visible outline", () => {
     const button = createButton({ variant: "primary", label: "Focus me" });
     expect(button.className).toContain("focus-visible:outline-primary");
     expect(button.className).toContain("focus-visible:outline-2");
@@ -90,8 +91,9 @@ describe("createButton — reserved focus ring & reduced motion (Req 20.3, 20.5)
 
   it("gates press transitions behind motion-safe so reduced-motion is honored", () => {
     const button = createButton({ variant: "primary", label: "Press me" });
-    expect(button.className).toContain("motion-safe:transition-transform");
-    expect(button.className).toContain("motion-safe:active:scale-90");
+    expect(button.className).toContain("motion-safe:transition-all");
+    expect(button.className).toContain("motion-safe:active:scale-95");
+    expect(button.className).toContain("motion-safe:hover:-translate-y-0.5");
   });
 });
 
@@ -159,17 +161,20 @@ describe("createCard — Notion-token conformance snapshots (Req 20.1, 20.2)", (
     expect(card.className).toContain("bg-surface");
     expect(card.className).toContain("text-ink");
     expect(card.className).toContain("rounded-lg");
-    expect(card.className).toContain("p-lg");
+    expect(card.className).toContain("p-md");
     expect(card.className).toContain("border-hairline");
     // flat elevation is hairline-only, never a drop shadow.
     expect(card.className).not.toContain("acx-elevated");
   });
 
-  it("elevated card adds the premium layered elevation (shadow + dark edge highlight)", () => {
+  it("elevated card uses the premium translucent glass surface + entrance", () => {
     const card = createCard({ variant: "elevated" });
-    expect(card.className).toContain("acx-elevated");
-    // Elevated dialogs/menus sit on the slightly raised surface token.
-    expect(card.className).toContain("bg-surface-raised");
+    // Elevated dialogs/menus use the translucent "glass" surface (backdrop blur
+    // + page show-through) with a soft scale+lift entrance.
+    expect(card.className).toContain("acx-glass");
+    expect(card.className).toContain("acx-enter");
+    // The opaque flat surface fill is not applied to the glass variant.
+    expect(card.className).not.toContain("bg-surface ");
   });
 });
 
@@ -182,23 +187,22 @@ describe("createTextInput — Notion-token conformance snapshots (Req 20.1, 20.2
     expect(input.outerHTML).toMatchSnapshot();
   });
 
-  it("uses the tight 4px radius and hairline border (never the pill radius)", () => {
+  it("uses the 12px radius and ink hairline border (never the CTA pill radius)", () => {
     const input = createTextInput({ ariaLabel: "Search sites" });
     expect(input.className).toContain("bg-surface");
     expect(input.className).toContain("text-ink");
-    expect(input.className).toContain("rounded-xs");
-    expect(input.className).toContain("border-hairline");
-    expect(input.className).not.toContain("rounded-full");
+    expect(input.className).toContain("rounded-md");
+    expect(input.className).toContain("border-hairline-strong");
+    expect(input.className).not.toContain("rounded-xl");
   });
 });
 
 describe("createTextInput — reserved focus ring (Req 20.3, 20.5)", () => {
-  it("renders the reserved primary-blue focus-visible outline and focus shadow", () => {
+  it("renders the reserved brand-accent focus-visible outline", () => {
     const input = createTextInput({ ariaLabel: "Search sites" });
     expect(input.className).toContain("focus-visible:outline-primary");
     expect(input.className).toContain("focus-visible:outline-2");
     expect(input.className).toContain("focus-visible:outline-offset-2");
-    expect(input.className).toContain("focus:shadow-soft");
   });
 });
 
@@ -235,11 +239,10 @@ describe("createBadge — Notion-token conformance snapshots (Req 20.1, 20.2, 20
     expect(badge.outerHTML).toMatchSnapshot();
   });
 
-  it("uses the white surface pill with primary-blue eyebrow text", () => {
+  it("uses the soft-green pill with positive-deep eyebrow text (Wise positive badge)", () => {
     const badge = createBadge({ label: "New" });
-    expect(badge.className).toContain("bg-surface");
-    // the one place primary blue is used as a text accent (DESIGN.md badge-pill).
-    expect(badge.className).toContain("text-primary");
+    expect(badge.className).toContain("bg-primary-pale");
+    expect(badge.className).toContain("text-positive-deep");
     expect(badge.className).toContain("text-eyebrow");
     expect(badge.className).toContain("rounded-full");
   });

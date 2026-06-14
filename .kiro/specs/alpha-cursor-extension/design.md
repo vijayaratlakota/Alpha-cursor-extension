@@ -18,7 +18,7 @@ All processing that the requirements imply "the cloud" might do is instead done 
 |---|---|---|
 | Platform | Chrome Manifest V3 | Service worker background, no persistent page (Req 22.1) |
 | Build | Vite + `@crxjs/vite-plugin` + TypeScript | HMR for content/popup/options, MV3-aware bundling |
-| UI styling | Tailwind CSS v4 (`@import "tailwindcss"`, `@tailwindcss/vite`) | Notion design tokens from DESIGN.md (Req 20) |
+| UI styling | Tailwind CSS v4 (`@import "tailwindcss"`, `@tailwindcss/vite`) | Wise design tokens from DESIGN.md (Req 20) |
 | Injected UI isolation | Shadow DOM (closed) per content-script surface | Prevents host-page CSS bleed into the Options_Panel |
 | Image processing | Canvas / OffscreenCanvas, `createImageBitmap` | WebP decode, format conversion, enhancement (Req 9, 10) |
 | PDF generation | bundled `jsPDF` | No remote calls (Req 9, 10) |
@@ -127,10 +127,13 @@ type Response<R = unknown> = { ok: true; data: R } | { ok: false; error: AppErro
 ### Cross-Cutting: Options_Panel (Req 2)
 - **Responsibility:** Resolve `Context_Type`, render the radial menu in a closed Shadow DOM, reposition near viewport edges, and dispatch the chosen tool.
 - **Context resolution order** (Req 2.2–2.5): non-empty selection → `selected-text` (highest precedence); else element is `<img>`/CSS background image → `image`; else `<video>` → `video`; else `generic-page`.
-- **Key APIs:** `resolveContext(event): ContextType`, `openPanel(context, point)`, `closePanel()`. Keyboard/escape and outside-click close (Req 2.9). Renders strictly with Notion tokens (Req 2.11, 20).
+- **Key APIs:** `resolveContext(event): ContextType`, `openPanel(context, point)`, `closePanel()`. Keyboard/escape and outside-click close (Req 2.9). Renders strictly with Wise tokens (Req 2.11, 20).
+- **Wise surface (Req 2.11, 20.8):** The radial hub is a light sage/white elevated card (`--acx-color-surface` fill, `--acx-color-hairline` border, `--acx-shadow-elevated`) with circular `icon-circular` buttons. Because the content-script Shadow DOM otherwise inherits the host page's `prefers-color-scheme`, the panel host (and other injected surfaces) is **pinned to the light Wise theme** by setting `data-acx-theme="light"` on the shadow host so the panel never renders with the dark token set on dark-mode pages.
+- **Icon set (Req 2.12):** Each tool renders a single-color line icon from one cohesive Wise-matching set (inline SVG using `currentColor`, inheriting `--acx-color-ink`), replacing the previous emoji glyphs. Icons live in a small `src/ui/icons` module keyed by `ToolId`; the `Tool.icon` field carries an icon key/SVG factory rather than an emoji character.
+- **Tooltip (Req 2.13, 2.14):** Hovering or focusing a tool button shows a Wise-styled tooltip with the tool's full descriptive name, anchored to the button, rendered inside the same closed Shadow DOM. It appears on `mouseenter`/`focus`, hides on `mouseleave`/`blur`, and uses an `ease-out` opacity transition gated behind `motion-safe:` so reduced-motion users get an instant, motionless tooltip. The accessible name remains on the button via `aria-label` (Req 20.7).
 
 ### Cross-Cutting: Notification (Req 20, used everywhere)
-- **Responsibility:** Transient Notion-styled toast rendered in the content-script Shadow DOM (`ex-toast` token). Single API `notify({ kind, text, code? })`. Honors `prefers-reduced-motion` (Req 20.6).
+- **Responsibility:** Transient Wise-styled toast rendered in the content-script Shadow DOM (`ex-toast` token). Single API `notify({ kind, text, code? })`. Honors `prefers-reduced-motion` (Req 20.6).
 
 ### Tool 1 — Notepad Clipboard (Req 4, 5, 6)
 - **Responsibility:** Capture every copy event while ON, store ordered entries, join with configured separator, copy-all to clipboard.
@@ -151,7 +154,7 @@ type Response<R = unknown> = { ok: true; data: R } | { ok: false; error: AppErro
 - **Responsibility (SW + CS):** CS drives auto-scroll and reports viewport metrics; SW calls `chrome.tabs.captureVisibleTab` per segment; CS/offscreen stitches segments on a Canvas, then exports PNG image or PDF (jsPDF).
 - **Stitching math (pure — property-tested):** `computeSegments(totalHeight, viewportHeight, devicePixelRatio)` returns non-overlapping, fully-covering scroll offsets and target draw rectangles. Output ≥ Full HD where page width permits (Req 9.3).
 - **Output choice (Req 9.4, 9.5):** prompt PDF vs high-quality image; generate and auto-download via `chrome.downloads`.
-- **Progress + failure:** Notion progress indicator during capture (Req 9.7); failure → notification, no download (Req 9.6). Checkpoints to storage for SW-restart resilience (Req 22.3).
+- **Progress + failure:** Wise progress indicator during capture (Req 9.7); failure → notification, no download (Req 9.6). Checkpoints to storage for SW-restart resilience (Req 22.3).
 
 ### Tool 5 — Save Image with Enhancement (Req 10)
 - **Responsibility (CS):** Fetch source image to a Canvas via `createImageBitmap` (decodes WebP, Req 10.4), optionally enhance, convert to PNG/JPG via `canvas.toBlob`, or render into a jsPDF page for PDF.
@@ -197,14 +200,14 @@ type Response<R = unknown> = { ok: true; data: R } | { ok: false; error: AppErro
 
 ### Tool 12 — Tab Shifter (Req 17)
 - **Responsibility (CS Shadow-DOM UI + SW):** Render a radial panel of current-window tabs with favicon + title; on select, SW activates the tab.
-- **Messages:** `TABS_LIST_LIGHT` (id, title, favIconUrl), `TAB_ACTIVATE { tabId }`. Missing favicon → Notion placeholder (Req 17.5); Escape closes without switching (Req 17.6).
+- **Messages:** `TABS_LIST_LIGHT` (id, title, favIconUrl), `TAB_ACTIVATE { tabId }`. Missing favicon → Wise placeholder (Req 17.5); Escape closes without switching (Req 17.6).
 
 ### Tool — Horizontal Scroll (Req 18)
 - **Responsibility (CS):** Toggleable mode translating vertical wheel delta into horizontal scroll on the targeted scrollable element; shows an active-mode indicator; selecting again disables.
 - **Pure helper (property-tested):** `wheelToHorizontalDelta(deltaY, deltaX)` maps vertical intent to horizontal scroll consistently.
 
 ### Options Page (Req 19) & Visual Design (Req 20)
-- **Responsibility:** Configure separator, search sites, sync preference; show/toggle global state; clear all notepad entries (with confirm, Req 19.6); host privacy statement (Req 21.4). All surfaces built with Tailwind v4 + Notion tokens, Inter type, reserved blue accent, visible focus rings, reduced-motion honored, aria-labels on icon-only controls (Req 20.1–20.7).
+- **Responsibility:** Configure separator, search sites, sync preference; show/toggle global state; clear all notepad entries (with confirm, Req 19.6); host privacy statement (Req 21.4). All surfaces built with Tailwind v4 + Wise tokens, Inter type, reserved lime-green accent, visible focus rings, reduced-motion honored, aria-labels on icon-only controls (Req 20.1–20.7).
 
 ### Permissions & Privacy (Req 21 — reinterpreted client-side)
 - **Responsibility:** Declare minimal MV3 permissions; request host/device permissions at point of use (Req 21.2); on denial, notify and keep other features usable (Req 21.3). Privacy statement states plainly: **all data is stored locally on this device; nothing is sent to any Alpha Cursor server because none exists.** "Cloud sync" = Chrome's own `storage.sync`. Clearing data deletes from `local`, IndexedDB, and `sync` (Req 21.7 reinterpreted). See Requirement Deltas.
@@ -413,7 +416,7 @@ Alpha Cursor contains a substantial layer of **pure functions** (context resolut
 
 ## Error Handling
 
-Errors are normalized into the `AppError` discriminated union and surfaced as Notion-styled Notifications. The system favors graceful degradation over silent failure, with two deliberate exceptions mandated by requirements.
+Errors are normalized into the `AppError` discriminated union and surfaced as Wise-styled Notifications. The system favors graceful degradation over silent failure, with two deliberate exceptions mandated by requirements.
 
 | Scenario | Handling | Requirement |
 |---|---|---|
@@ -466,7 +469,7 @@ Storage persistence and 500ms timing (1.4, 5.3, 19.3), startup restore (1.5), ta
 
 ### Smoke / Snapshot Tests
 
-Manifest V3 validity and minimal-permission declaration (21.1, 22.1), no-remote-code packaging check that all WASM/library assets resolve via `chrome.runtime.getURL` (22.2), and Notion design-system conformance via component snapshots (2.11, 20.1–20.7). These run once, not 100 iterations.
+Manifest V3 validity and minimal-permission declaration (21.1, 22.1), no-remote-code packaging check that all WASM/library assets resolve via `chrome.runtime.getURL` (22.2), and Wise design-system conformance via component snapshots (2.11, 20.1–20.8). These run once, not 100 iterations.
 
 ### Why media/OCR/voice are not property-tested
 

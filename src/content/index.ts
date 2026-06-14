@@ -14,6 +14,9 @@ import {
   getEnabled,
   getCachedEnabled,
   onEnabledChanged,
+  getFeatureFlags,
+  getCachedFeatureFlags,
+  onFeatureFlagsChanged,
 } from "../shared/settings";
 import {
   attachPanelTrigger,
@@ -27,6 +30,8 @@ import {
   registerNotepadTool,
   type DetachNotepadCapture,
 } from "../tools/notepad/notepad";
+// Automatic content feature: copy text to the clipboard on left-drag selection.
+import { initAutoCopy, type DetachAutoCopy } from "../tools/autocopy/autoCopy";
 import { registerTabsTools } from "./tabsTools";
 import { registerScreenshotTool } from "../tools/screenshot/screenshotTool";
 import { registerImageTool } from "../tools/image/imageTool";
@@ -48,6 +53,8 @@ import {
 let detachTrigger: DetachPanelTrigger | null = null;
 /** Current notepad copy-capture disposer while attached, else null. */
 let detachNotepadCapture: DetachNotepadCapture | null = null;
+/** Current auto-copy-on-selection disposer while attached, else null. */
+let detachAutoCopy: DetachAutoCopy | null = null;
 
 /**
  * Register every tool's real behavior into the Options_Panel catalog. Each
@@ -70,17 +77,15 @@ function registerAllTools(): void {
   registerHorizontalScrollTool(); // Horizontal scroll
 }
 
-/** Attach the middle-click trigger + notepad copy capture if not already on. */
+/** Attach the middle-click trigger + per-feature automatic captures. */
 function enableActive(): void {
   if (!detachTrigger) {
     detachTrigger = attachPanelTrigger(window);
   }
-  if (!detachNotepadCapture) {
-    detachNotepadCapture = initNotepadCapture();
-  }
+  reconcileFeatures();
 }
 
-/** Detach the middle-click trigger + notepad capture (and close any panel). */
+/** Detach the middle-click trigger + all automatic captures (close any panel). */
 function disableActive(): void {
   if (detachTrigger) {
     detachTrigger();
@@ -90,6 +95,36 @@ function disableActive(): void {
   if (detachNotepadCapture) {
     detachNotepadCapture();
     detachNotepadCapture = null;
+  }
+  if (detachAutoCopy) {
+    detachAutoCopy();
+    detachAutoCopy = null;
+  }
+}
+
+/**
+ * Attach/detach each AUTOMATIC content feature according to its per-feature
+ * flag (only meaningful while the global Toggle is ON). Idempotent: re-running
+ * on a flag change attaches newly-enabled features and detaches disabled ones.
+ */
+function reconcileFeatures(): void {
+  if (!getCachedEnabled()) return;
+  const flags = getCachedFeatureFlags();
+
+  // Notepad copy-capture (Ctrl+C → notepad history).
+  if (flags.notepadCapture && !detachNotepadCapture) {
+    detachNotepadCapture = initNotepadCapture();
+  } else if (!flags.notepadCapture && detachNotepadCapture) {
+    detachNotepadCapture();
+    detachNotepadCapture = null;
+  }
+
+  // Drag-to-copy (highlight → clipboard + notepad).
+  if (flags.dragCopy && !detachAutoCopy) {
+    detachAutoCopy = initAutoCopy();
+  } else if (!flags.dragCopy && detachAutoCopy) {
+    detachAutoCopy();
+    detachAutoCopy = null;
   }
 }
 
@@ -133,6 +168,15 @@ export function bootstrapContent(): void {
     .catch(() => {
       /* default-enabled cache already applied; storage errors surface elsewhere */
     });
+
+  // Load per-feature flags and re-reconcile the automatic features once known,
+  // then react to any later flag change (Options page toggles).
+  void getFeatureFlags()
+    .then(() => reconcileFeatures())
+    .catch(() => {
+      /* default all-on cache already applied */
+    });
+  onFeatureFlagsChanged(() => reconcileFeatures());
 
   onEnabledChanged(applyEnabled);
 }

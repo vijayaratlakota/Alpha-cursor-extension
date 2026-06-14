@@ -39,6 +39,7 @@ import {
 } from "../shared/settings";
 import {
   NotepadMessageType,
+  type ClearNotepadResult,
   type NotepadCopyAllResult,
   type NotepadEntry,
 } from "../tools/notepad/notepad";
@@ -226,11 +227,6 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
 // Notepad view — Req 6.1
 // ---------------------------------------------------------------------------
 
-/** Collapse an entry to a single trimmed line for the compact popup list. */
-function toSingleLine(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
-}
-
 /** Render the notepad entries (most-recent first) or an empty state. */
 function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): void {
   container.replaceChildren();
@@ -249,20 +245,22 @@ function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): voi
 
   const list = document.createElement("ul");
   list.className = joinClasses(
-    "m-0 p-0 list-none flex flex-col gap-xxs",
-    "max-h-[220px] overflow-y-auto",
+    "m-0 p-0 list-none flex flex-col gap-xs",
+    // ONE scroller for the whole notepad: the list scrolls, entries do not.
+    "max-h-[300px] overflow-y-auto pr-xxs",
   );
 
   // Most-recent first.
   for (const entry of [...entries].reverse()) {
     const item = document.createElement("li");
     item.className = joinClasses(
-      "truncate text-body-sm font-sans text-ink-secondary",
-      "px-sm py-xxs rounded-sm bg-surface border border-hairline",
+      // Show the FULL copied text (wrapped). No per-entry scrollbar — the
+      // single list scroller above lets the user scroll through everything.
+      "text-body-sm font-sans text-ink-secondary whitespace-pre-wrap break-words",
+      "px-sm py-xs rounded-sm bg-surface border border-hairline",
     );
-    const line = toSingleLine(entry.text);
-    item.textContent = line.length > 0 ? line : "(empty)";
-    item.title = line;
+    const text = entry.text.trim();
+    item.textContent = text.length > 0 ? text : "(empty)";
     list.appendChild(item);
   }
 
@@ -318,7 +316,23 @@ function mountPopup(root: HTMLElement): void {
     },
   });
 
-  sectionHead.append(sectionTitle, copyAllBtn);
+  const clearAllBtn = createButton({
+    variant: "utility",
+    label: "Clear All",
+    ariaLabel: "Clear all notepad entries",
+    onClick: () => {
+      void runClearAll();
+    },
+  });
+  // Mark the destructive action with the negative ink (keeps the green accent
+  // reserved for primary actions).
+  clearAllBtn.style.color = "var(--acx-color-negative)";
+
+  const headActions = document.createElement("div");
+  headActions.className = "flex items-center gap-sm";
+  headActions.append(clearAllBtn, copyAllBtn);
+
+  sectionHead.append(sectionTitle, headActions);
 
   const listContainer = document.createElement("div");
   renderNotepadList(listContainer, []);
@@ -396,6 +410,28 @@ function mountPopup(root: HTMLElement): void {
       `Copied ${count} ${count === 1 ? "entry" : "entries"}.`,
       "success",
     );
+  }
+
+  /**
+   * Clear All flow: ask the background to clear every notepad entry, then
+   * re-render the (now empty) list. Reports the count cleared.
+   */
+  async function runClearAll(): Promise<void> {
+    const response = await sendToBackground<undefined, ClearNotepadResult>(
+      NotepadMessageType.CLEAR,
+      undefined,
+    );
+    if (!isOk(response)) {
+      status.show("Couldn't clear the notepad.", "error");
+      return;
+    }
+    await refreshNotepad(listContainer);
+    const n = response.data.entriesCleared;
+    if (n === 0) {
+      status.show("Notepad is already empty.", "info");
+    } else {
+      status.show(`Cleared ${n} ${n === 1 ? "entry" : "entries"}.`, "success");
+    }
   }
 }
 

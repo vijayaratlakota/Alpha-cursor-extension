@@ -80,6 +80,12 @@ export interface Message<T = unknown> {
   type: string;
   payload: T;
   requestId: string;
+  /**
+   * Optional routing hint. When set to `"offscreen"` the message is intended
+   * for the offscreen document (OCR worker host) and the background router
+   * ignores it so the two contexts don't both answer the same broadcast.
+   */
+  target?: "offscreen";
 }
 
 /** A successful response carrying typed `data`. */
@@ -147,3 +153,39 @@ export function isOk<R>(response: Response<R>): response is SuccessResponse<R> {
 export function isErr<R>(response: Response<R>): response is ErrorResponse {
   return response.ok === false;
 }
+
+/**
+ * Returns `true` when an error means the extension's runtime context is gone —
+ * i.e. the extension was reloaded/updated/disabled while a stale content script
+ * is still running on an already-open page. In that state every `chrome.*` call
+ * throws "Extension context invalidated" until the page is reloaded.
+ *
+ * Callers use this to surface a clear "please refresh the page" message instead
+ * of the raw, confusing Chrome error.
+ */
+export function isContextInvalidated(error: unknown): boolean {
+  // The page-level runtime may already be torn down, so guard the access.
+  try {
+    const runtimeGone =
+      typeof chrome === "undefined" ||
+      !chrome.runtime ||
+      typeof chrome.runtime.id !== "string" ||
+      chrome.runtime.id === "";
+    if (runtimeGone) return true;
+  } catch {
+    return true;
+  }
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  return /Extension context invalidated|context invalidated|message port closed/i.test(
+    message,
+  );
+}
+
+/** User-facing message for the invalidated-context case. */
+export const CONTEXT_INVALIDATED_MESSAGE =
+  "Alpha Cursor was updated — please refresh this page to continue.";

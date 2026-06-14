@@ -83,7 +83,7 @@ Property test tagging format (used in every PBT sub-task):
   - [x]* 8.2 Write integration tests for persistence timing and startup restore (mocked Chrome APIs)
     - _Requirements: 1.4, 1.5_
 
-- [ ] 9. Checkpoint - foundation
+- [~] 9. Checkpoint - foundation
   - Ensure all tests pass, ask the user if questions arise.
 
 - [x] 10. Context-aware Options_Panel
@@ -149,9 +149,9 @@ Property test tagging format (used in every PBT sub-task):
   - [x]* 13.2 Write property test for screenshot segmentation
     - **Property 10: Screenshot segmentation fully covers the page**
     - **Validates: Requirements 9.2, 9.3**
-  - [ ] 13.3 Implement the capture orchestrator: content script drives auto-scroll + reports metrics; background calls `captureVisibleTab` per segment; stitch on Canvas/OffscreenCanvas; write `OperationCheckpoint` for SW-restart resumption
+  - [~] 13.3 Implement the capture orchestrator: content script drives auto-scroll + reports metrics; background calls `captureVisibleTab` per segment; stitch on Canvas/OffscreenCanvas; write `OperationCheckpoint` for SW-restart resumption
     - _Requirements: 9.2, 9.7, 22.3_
-  - [ ] 13.4 Implement output handling: prompt PDF (jsPDF) vs high-quality image, generate, and auto-download via `chrome.downloads`; failure → notification, no download; show Notion progress indicator
+  - [~] 13.4 Implement output handling: prompt PDF (jsPDF) vs high-quality image, generate, and auto-download via `chrome.downloads`; failure → notification, no download; show Notion progress indicator
     - _Requirements: 9.4, 9.5, 9.6, 9.7_
   - [ ]* 13.5 Write integration test for downloads + jsPDF output and checkpoint resume (mocked Chrome APIs)
     - _Requirements: 9.5, 22.3_
@@ -162,7 +162,7 @@ Property test tagging format (used in every PBT sub-task):
   - [x]* 14.2 Write property test for image conversion
     - **Property 11: Image conversion preserves dimensions and maps mime correctly**
     - **Validates: Requirements 10.2, 10.3, 10.4**
-  - [ ] 14.3 Implement image fetch → Canvas via `createImageBitmap` (WebP decode), optional enhancement (high-quality smoothing + sharpen/contrast convolution on OffscreenCanvas), conversion via `canvas.toBlob` or jsPDF page, and auto-download; failure → notification, no download; success → notification with format
+  - [~] 14.3 Implement image fetch → Canvas via `createImageBitmap` (WebP decode), optional enhancement (high-quality smoothing + sharpen/contrast convolution on OffscreenCanvas), conversion via `canvas.toBlob` or jsPDF page, and auto-download; failure → notification, no download; success → notification with format
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
   - [ ]* 14.4 Write edge-case test for unretrievable/undecodable source
     - _Requirements: 10.5_
@@ -194,7 +194,7 @@ Property test tagging format (used in every PBT sub-task):
   - [x]* 17.2 Write property test for the media classifier
     - **Property 15: Media classifier never marks protected media feasible**
     - **Validates: Requirements 13.1, 13.3, 13.4, 13.5, 22.4**
-  - [ ] 17.3 Wire content/background download of directly-accessible media via `chrome.downloads`; disable infeasible options with an explanatory notification; show the ToS notice before the first download; report failures by item
+  - [~] 17.3 Wire content/background download of directly-accessible media via `chrome.downloads`; disable infeasible options with an explanatory notification; show the ToS notice before the first download; report failures by item
     - _Requirements: 13.2, 13.6, 13.7, 13.8, 22.4_
   - [ ]* 17.4 Write example test for the ToS-notice-before-first-download flow
     - _Requirements: 13.8_
@@ -214,19 +214,19 @@ Property test tagging format (used in every PBT sub-task):
   - [x]* 19.2 Write property test for selection-rectangle normalization
     - **Property 17: Selection rectangle normalization**
     - **Validates: Requirements 15.2**
-  - [ ] 19.3 Wire drag-selection overlay, region rasterization (`captureVisibleTab` crop / `drawImage(video)`), bundled `tesseract.js` (local WASM + worker) extraction, clipboard copy + notification, no-text notification, and Escape cancel
+  - [~] 19.3 Wire drag-selection overlay, region rasterization (`captureVisibleTab` crop / `drawImage(video)`), bundled `tesseract.js` (local WASM + worker) extraction, clipboard copy + notification, no-text notification, and Escape cancel
     - _Requirements: 15.1, 15.3, 15.4, 15.5, 15.6_
   - [ ]* 19.4 Write edge-case test for the no-text-found path
     - _Requirements: 15.5_
 
 - [ ] 20. Tool 11 — Voice to Text
-  - [ ] 20.1 Implement the voice transcriber using Web Speech API `SpeechRecognition`: mic control UI, permission request, interim+final transcripts, and on stop expose text to copy or insert into the field focused at start
+  - [~] 20.1 Implement the voice transcriber using Web Speech API `SpeechRecognition`: mic control UI, permission request, interim+final transcripts, and on stop expose text to copy or insert into the field focused at start
     - _Requirements: 16.1, 16.2, 16.3, 16.4, 16.6_
   - [ ]* 20.2 Write example tests for permission-denied notification and focused-field insertion
     - _Requirements: 16.5, 16.6_
 
 - [ ] 21. Tool 12 — Tab Shifter
-  - [ ] 21.1 Implement `TABS_LIST_LIGHT` (id, title, favIconUrl) and `TAB_ACTIVATE { tabId }` handlers and the radial Shadow-DOM tab panel with favicon + title, Notion placeholder for missing favicon, and Escape-closes-without-switching
+  - [~] 21.1 Implement `TABS_LIST_LIGHT` (id, title, favIconUrl) and `TAB_ACTIVATE { tabId }` handlers and the radial Shadow-DOM tab panel with favicon + title, Notion placeholder for missing favicon, and Escape-closes-without-switching
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6_
   - [ ]* 21.2 Write integration/example tests for tab activation and favicon placeholder
     - _Requirements: 17.4, 17.5_
@@ -240,39 +240,49 @@ Property test tagging format (used in every PBT sub-task):
   - [x] 22.3 Wire the toggleable horizontal-scroll mode with an active-mode indicator; selecting again disables it
     - _Requirements: 18.1, 18.4, 18.5_
 
-- [ ] 23. Checkpoint - all tools
+- [~] 23. Checkpoint - all tools
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 24. Popup surface
-  - [ ] 24.1 Build the popup UI (Tailwind v4 + Notion tokens): global Toggle with two states, compact notepad view, and "Copy All"
+  - [~] 24.1 Build the popup UI (Tailwind v4 + Notion tokens): global Toggle with two states, compact notepad view, and "Copy All"
     - _Requirements: 1.1, 6.1, 19.1, 20.1_
   - [ ]* 24.2 Write unit/snapshot tests for popup Toggle two states
     - _Requirements: 1.1_
 
 - [ ] 25. Options page
-  - [ ] 25.1 Build the options page: separator config (comma/dash/slash/custom), "Search in" site list add/remove/reorder, sync preference (`chrome-sync` vs `local-only`), current Toggle state + change, all persisting within 500ms
+  - [~] 25.1 Build the options page: separator config (comma/dash/slash/custom), "Search in" site list add/remove/reorder, sync preference (`chrome-sync` vs `local-only`), current Toggle state + change, all persisting within 500ms
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 12.6, 19.1, 19.2, 19.3, 19.4, 19.5_
-  - [ ] 25.2 Implement clear-all-notepad control with confirmation, wired to `storage.clearAll` scoping
+  - [~] 25.2 Implement clear-all-notepad control with confirmation, wired to `storage.clearAll` scoping
     - _Requirements: 19.6, 21.7_
   - [ ]* 25.3 Write edge-case + integration tests for separator persistence-failure-silent, settings 500ms persistence, and clear-all confirmation
     - _Requirements: 5.3, 5.4, 19.3, 19.6_
 
 - [ ] 26. Permissions, privacy, and manifest finalization
-  - [ ] 26.1 Implement point-of-use host/device permission requests with graceful denial (notify the affected feature, keep other features working)
+  - [~] 26.1 Implement point-of-use host/device permission requests with graceful denial (notify the affected feature, keep other features working)
     - _Requirements: 21.2, 21.3_
-  - [ ] 26.2 Add the privacy statement to the options page stating all data is stored locally (no Alpha Cursor server exists), "cloud sync" = Chrome `storage.sync`, and the Web Speech API browser-native nuance
+  - [~] 26.2 Add the privacy statement to the options page stating all data is stored locally (no Alpha Cursor server exists), "cloud sync" = Chrome `storage.sync`, and the Web Speech API browser-native nuance
     - _Requirements: 21.4_
-  - [ ] 26.3 Finalize the MV3 manifest to declare only the minimal permissions actually used by implemented features
+  - [~] 26.3 Finalize the MV3 manifest to declare only the minimal permissions actually used by implemented features
     - _Requirements: 21.1, 22.1_
   - [ ]* 26.4 Write smoke tests for manifest validity, minimal-permission declaration, and no-remote-code asset resolution via `chrome.runtime.getURL`
     - _Requirements: 21.1, 22.1, 22.2_
 
 - [ ] 27. Final verification and build
-  - [ ] 27.1 Run the full test suite (property tests at min 100 runs, example/integration/smoke), fix failures, and run a production `build` to confirm the packaged extension emits all bundled assets
+  - [~] 27.1 Run the full test suite (property tests at min 100 runs, example/integration/smoke), fix failures, and run a production `build` to confirm the packaged extension emits all bundled assets
     - _Requirements: 22.1, 22.2_
 
-- [ ] 28. Final checkpoint - Ensure all tests pass
+- [~] 28. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 29. Wise restyle of the Options_Panel (icons, tooltips, light theme)
+  - [x] 29.1 Pin injected Shadow-DOM surfaces to the light Wise theme by setting `data-acx-theme="light"` on the shadow host, so the Options_Panel never inherits the host page's dark `prefers-color-scheme`
+    - _Requirements: 2.11, 20.8_
+  - [x] 29.2 Add a cohesive Wise-matching monochrome line-icon set (`src/ui/icons/`) keyed by `ToolId` (inline SVG using `currentColor`), and replace the emoji glyphs in the tool catalog so each radial button renders a theme-matching icon
+    - _Requirements: 2.12, 20.2, 20.7_
+  - [x] 29.3 Add a Wise-styled hover/focus tooltip to each radial tool button showing the tool's full descriptive name, shown on `mouseenter`/`focus` and hidden on `mouseleave`/`blur`, with an `ease-out` opacity transition gated behind `motion-safe:`
+    - _Requirements: 2.13, 2.14, 20.6_
+  - [ ]* 29.4 Write unit/snapshot tests for light-theme pinning on the host, icon rendering per tool, and tooltip show/hide on hover and focus
+    - _Requirements: 2.11, 2.12, 2.13, 20.8_
 
 ## Notes
 
@@ -301,7 +311,8 @@ Property test tagging format (used in every PBT sub-task):
     { "id": 11, "tasks": ["11.5", "11.6", "11.8", "12.4", "12.6", "13.5", "14.4", "17.4", "19.4", "20.2", "21.2"] },
     { "id": 12, "tasks": ["24.1", "25.1", "25.2", "26.1", "26.2"] },
     { "id": 13, "tasks": ["24.2", "25.3", "26.3"] },
-    { "id": 14, "tasks": ["26.4", "27.1"] }
+    { "id": 14, "tasks": ["26.4", "27.1"] },
+    { "id": 15, "tasks": ["29.1", "29.2", "29.3", "29.4"] }
   ]
 }
 ```

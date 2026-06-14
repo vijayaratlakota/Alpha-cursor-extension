@@ -24,6 +24,7 @@
 
 import { registerHandler } from "./router";
 import { ErrorCode, makeError } from "@/shared/messaging";
+import { OFFSCREEN_DOCUMENT_PATH } from "@/shared/offscreen";
 
 /** Message type strings for the OCR background handlers. */
 export const OcrMessageType = {
@@ -33,12 +34,25 @@ export const OcrMessageType = {
    * {@link OcrCaptureResult}.
    */
   CAPTURE_VISIBLE_TAB: "OCR_CAPTURE_VISIBLE_TAB",
+  /**
+   * Ensure the OCR offscreen document exists (creating it on first use). The
+   * offscreen document hosts the tesseract.js worker under the EXTENSION's CSP
+   * so OCR works even on strict-CSP pages (e.g. YouTube) where a page-context
+   * worker is blocked. No payload. Returns {@link OcrEnsureOffscreenResult}.
+   */
+  ENSURE_OFFSCREEN: "OCR_ENSURE_OFFSCREEN",
 } as const;
 
 /** Result of an {@link OcrMessageType.CAPTURE_VISIBLE_TAB} request. */
 export interface OcrCaptureResult {
   /** PNG data URL of the captured viewport (`data:image/png;base64,...`). */
   dataUrl: string;
+}
+
+/** Result of an {@link OcrMessageType.ENSURE_OFFSCREEN} request. */
+export interface OcrEnsureOffscreenResult {
+  /** `true` once the offscreen document is present (created or already open). */
+  ready: boolean;
 }
 
 /** Max attempts for a single `captureVisibleTab` call before giving up. */
@@ -96,6 +110,56 @@ async function captureVisible(windowId: number | undefined): Promise<string> {
 }
 
 /**
+ * Ensure the OCR offscreen document exists, creating it on first use. Offscreen
+ * documents host the tesseract.js worker under the extension's own CSP, which
+ * is the only reliable way to run the worker on strict-CSP pages (YouTube etc.)
+ * where a content-script-spawned worker is blocked. Idempotent: if the document
+ * already exists this is a no-op. Requires the `"offscreen"` manifest
+ * permission.
+ */
+async function ensureOffscreenDocument(): Promise<OcrEnsureOffscreenResult> {
+  const offscreen = (chrome as { offscreen?: typeof chrome.offscreen }).offscreen;
+  if (!offscreen || typeof offscreen.createDocument !== "function") {
+    throw makeError(
+      ErrorCode.UNKNOWN,
+      "Offscreen documents are not available in this browser",
+    );
+  }
+
+  // Avoid creating a second document: check for an existing one first.
+  try {
+    const hasDoc = (
+      chrome as {
+        offscreen?: { hasDocument?: () => Promise<boolean> };
+      }
+    ).offscreen?.hasDocument;
+    if (typeof hasDoc === "function") {
+      const exists = await hasDoc.call(chrome.offscreen);
+      if (exists) return { ready: true };
+    }
+  } catch {
+    /* fall through to createDocument; a duplicate create is caught below */
+  }
+
+  try {
+    await offscreen.createDocument({
+      url: OFFSCREEN_DOCUMENT_PATH,
+      reasons: ["WORKERS" as chrome.offscreen.Reason],
+      justification:
+        "Run the bundled OCR (tesseract.js) worker under the extension CSP so text extraction works on strict-CSP pages.",
+    });
+  } catch (error) {
+    // Creating while one already exists throws; treat that as success.
+    const message = error instanceof Error ? error.message : String(error);
+    if (/single offscreen|already|exists/i.test(message)) {
+      return { ready: true };
+    }
+    throw makeError(ErrorCode.UNKNOWN, `Failed to open OCR offscreen: ${message}`);
+  }
+  return { ready: true };
+}
+
+/**
  * Register the OCR capture handler on the background router. Idempotent; safe to
  * call on every service-worker wake. Wired from `src/background/index.ts` (not
  * edited by this task).
@@ -108,5 +172,10 @@ export function installOcr(): void {
       const dataUrl = await captureVisible(windowId);
       return { dataUrl };
     },
+  );
+
+  registerHandler<void, OcrEnsureOffscreenResult>(
+    OcrMessageType.ENSURE_OFFSCREEN,
+    async () => ensureOffscreenDocument(),
   );
 }

@@ -80,22 +80,28 @@ const BASE_CLASSES =
   "inline-flex items-center justify-center font-sans select-none cursor-pointer border-0 " +
   "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary " +
   "disabled:opacity-50 disabled:cursor-not-allowed " +
-  "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out motion-safe:active:scale-90";
+  "motion-safe:transition-all motion-safe:duration-150 motion-safe:ease-out " +
+  "motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-95";
 
-/** Variant-specific class strings derived from the DESIGN.md component specs. */
+/** Variant-specific class strings derived from the Wise DESIGN.md component specs. */
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  // bg primary, on-primary text, button type, pill; pressed -> primary-active.
+  // Wise primary CTA: lime-green fill with DARK ink text, rounded pill,
+  // pressed -> lighter green. Hover lifts + brightens.
   primary:
-    "bg-primary text-on-primary text-button rounded-full px-lg py-xs active:bg-primary-active",
-  // white surface, ink text, pill, soft shadow.
+    "bg-primary text-on-primary text-body-sm font-semibold rounded-lg px-lg py-sm " +
+    "hover:bg-primary-active active:bg-primary-active motion-safe:hover:shadow-soft",
+  // Wise secondary: sage/white surface, ink text → turns lime-green on hover.
   secondary:
-    "bg-surface text-ink text-button rounded-full px-lg py-xs shadow-soft",
-  // white surface, ink text, 8px radius, 4px/14px padding, 1px hairline border.
+    "bg-canvas-soft text-ink text-body-sm font-semibold rounded-lg px-lg py-sm " +
+    "hover:bg-fill-hover hover:text-primary motion-safe:hover:shadow-soft",
+  // Wise tertiary/utility: surface, ink text → turns lime-green on hover.
   utility:
-    "bg-surface text-ink text-button rounded-md border border-hairline px-[14px] py-[4px]",
-  // circular translucent fill (theme-adaptive), ink glyph; square hit area.
+    "bg-surface text-ink text-body-sm font-semibold rounded-md border border-hairline-strong px-md py-xs " +
+    "hover:bg-fill-hover hover:text-primary hover:border-primary",
+  // Circular translucent fill; ink glyph → turns lime-green on hover.
   "icon-circular":
-    "bg-fill-subtle text-ink hover:bg-fill-hover rounded-full size-9 p-0",
+    "bg-fill-subtle text-ink rounded-full size-8 p-0 " +
+    "hover:bg-fill-hover hover:text-primary",
 };
 
 /**

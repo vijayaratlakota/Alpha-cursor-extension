@@ -58,8 +58,13 @@ import {
   getCachedEnabled,
   setEnabled,
   onEnabledChanged,
+  getFeatureFlags,
+  setFeatureFlag,
+  FEATURE_FLAG_KEYS,
+  DEFAULT_FEATURE_FLAGS,
   DEFAULT_SEPARATOR_CONFIG,
   DEFAULT_SYNC_PREFERENCE,
+  type FeatureFlags,
   type SeparatorConfig,
   type SearchSite,
   type Settings,
@@ -451,7 +456,7 @@ function createSearchSitesControl(
       info.append(label, tmpl);
 
       const controls = document.createElement("div");
-      controls.className = "flex items-center gap-xxs shrink-0";
+      controls.className = "flex items-center gap-xs shrink-0";
 
       const upBtn = createButton({
         variant: "utility",
@@ -633,6 +638,135 @@ function createSyncPreferenceControl(
   }
 
   return group;
+}
+
+// ---------------------------------------------------------------------------
+// Feature toggles (per-feature automatic behaviors)
+// ---------------------------------------------------------------------------
+
+/** Display metadata for each toggleable automatic feature. */
+const FEATURE_META: Record<
+  keyof FeatureFlags,
+  { label: string; hint: string }
+> = {
+  dragCopy: {
+    label: "Drag to copy",
+    hint: "Highlight text with the mouse and it's copied to the clipboard and notepad automatically. Press Ctrl+Z right after to undo.",
+  },
+  persistHighlight: {
+    label: "Keep copied text highlighted",
+    hint: "Leave a green highlight on text you drag-copied so you can see what was copied, until you refresh the page.",
+  },
+  notepadCapture: {
+    label: "Save copies to notepad",
+    hint: "Every Ctrl+C copy is collected in the notepad so you can Copy All later.",
+  },
+  ocrToNotepad: {
+    label: "Save extracted text to notepad",
+    hint: "Text pulled from images and videos (Text extraction) is also added to the notepad.",
+  },
+  cookieRemoval: {
+    label: "Remove cookie pop-ups",
+    hint: "Automatically dismiss cookie-consent banners as pages load.",
+  },
+};
+
+/**
+ * Build a single accessible `role="switch"` row for a feature flag. Mirrors the
+ * global Toggle switch styling so the page reads consistently. `onChange` fires
+ * only on user interaction.
+ */
+function createFeatureSwitchRow(
+  key: keyof FeatureFlags,
+  initial: boolean,
+  onChange: (value: boolean) => void,
+): HTMLElement {
+  const meta = FEATURE_META[key];
+
+  const row = document.createElement("div");
+  row.className = joinClasses(
+    "flex items-center justify-between gap-md",
+    "px-md py-sm rounded-md bg-canvas-soft border border-hairline",
+  );
+
+  const labelWrap = document.createElement("div");
+  labelWrap.className = "flex flex-col min-w-0";
+
+  const labelId = `acx-feature-${key}-label`;
+  const title = document.createElement("span");
+  title.id = labelId;
+  title.className = "text-body-sm font-sans text-ink";
+  title.textContent = meta.label;
+
+  const hint = document.createElement("span");
+  hint.className = "text-caption font-sans text-ink-muted";
+  hint.textContent = meta.hint;
+
+  labelWrap.append(title, hint);
+
+  const sw = document.createElement("button");
+  sw.type = "button";
+  sw.setAttribute("role", "switch");
+  sw.setAttribute("aria-labelledby", labelId);
+  sw.className = joinClasses(
+    "relative inline-flex items-center shrink-0 cursor-pointer",
+    "w-[44px] h-[24px] rounded-full border-0 p-0",
+    "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
+  );
+
+  const knob = document.createElement("span");
+  knob.setAttribute("aria-hidden", "true");
+  knob.className = joinClasses(
+    "absolute top-[2px] left-[2px] size-[20px] rounded-full bg-surface shadow-soft",
+    "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
+  );
+  sw.appendChild(knob);
+
+  let current = initial;
+  const paint = (on: boolean): void => {
+    sw.setAttribute("aria-checked", String(on));
+    sw.style.backgroundColor = on
+      ? "var(--acx-color-primary)"
+      : "var(--acx-color-hairline)";
+    knob.style.transform = on ? "translateX(20px)" : "translateX(0)";
+  };
+  paint(current);
+
+  sw.addEventListener("click", () => {
+    current = !current;
+    paint(current);
+    onChange(current);
+  });
+
+  row.append(labelWrap, sw);
+  return row;
+}
+
+/**
+ * Build the Features section body: one switch per toggleable automatic feature,
+ * seeded from the persisted flags. Each switch persists its own flag
+ * non-blockingly (Req 19.3) and is independent of the others.
+ */
+function createFeatureToggles(
+  initial: FeatureFlags,
+  status: StatusRegion,
+): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "flex flex-col gap-sm";
+
+  for (const key of FEATURE_FLAG_KEYS) {
+    const row = createFeatureSwitchRow(key, initial[key], (value) => {
+      void setFeatureFlag(key, value);
+      status.show(
+        `${FEATURE_META[key].label} ${value ? "enabled" : "disabled"}.`,
+        "success",
+      );
+    });
+    wrap.appendChild(row);
+  }
+
+  return wrap;
 }
 
 // ---------------------------------------------------------------------------
@@ -836,6 +970,25 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
     syncControl,
   );
 
+  // ── Feature toggles ──────────────────────────────────────────────────
+  // Seed from defaults (all on) then refine once the persisted flags resolve.
+  const featuresBody = document.createElement("div");
+  featuresBody.className = "flex flex-col gap-sm";
+  const renderFeatures = (flags: FeatureFlags): void => {
+    featuresBody.replaceChildren(createFeatureToggles(flags, status));
+  };
+  renderFeatures({ ...DEFAULT_FEATURE_FLAGS });
+  void getFeatureFlags()
+    .then(renderFeatures)
+    .catch(() => {
+      /* defaults already rendered */
+    });
+  const featuresCard = sectionCard(
+    "Features",
+    "Turn individual automatic behaviors on or off. These work on top of the main switch above.",
+    featuresBody,
+  );
+
   // ── Clear data ───────────────────────────────────────────────────────
   const clearControl = createClearDataControl(status);
   const clearCard = sectionCard("Clear data", undefined, clearControl);
@@ -851,6 +1004,7 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
   root.append(
     header,
     toggleCard,
+    featuresCard,
     separatorCard,
     searchCard,
     syncCard,

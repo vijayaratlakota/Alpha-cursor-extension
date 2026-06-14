@@ -24,10 +24,15 @@ import {
   appendEntry,
   copyAll,
   listEntries,
+  removeEntry,
+  clearNotepad,
+  type ClearNotepadResult,
   type NotepadAppendPayload,
   type NotepadAppendResult,
   type NotepadCopyAllResult,
   type NotepadEntry,
+  type NotepadRemovePayload,
+  type NotepadRemoveResult,
 } from "@/tools/notepad/notepad";
 
 /**
@@ -52,5 +57,19 @@ export function installNotepad(): void {
   registerHandler<void, NotepadEntry[]>(
     NotepadMessageType.LIST,
     async () => listEntries(),
+  );
+
+  registerHandler<NotepadRemovePayload, NotepadRemoveResult>(
+    NotepadMessageType.REMOVE,
+    async (payload) => {
+      const id = typeof payload?.id === "string" ? payload.id : "";
+      if (id === "") return { removed: false };
+      return removeEntry(id);
+    },
+  );
+
+  registerHandler<void, ClearNotepadResult>(
+    NotepadMessageType.CLEAR,
+    async () => clearNotepad(),
   );
 }

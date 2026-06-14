@@ -1,288 +1,315 @@
 /*
- * Alpha Cursor — Notion design tokens (raw CSS custom properties)
- * ----------------------------------------------------------------
- * Source of truth: DESIGN.md (Notion analysis) at the workspace root.
+ * Alpha Cursor — Wise design tokens (raw CSS custom properties)
+ * --------------------------------------------------------------
+ * Source of truth: wise/DESIGN.md (Wise design analysis).
  *
- * This file deliberately contains ONLY plain CSS custom properties — no
- * Tailwind directives — so it can be imported as a string and injected into
- * closed Shadow DOM roots independently of the Tailwind build:
+ * Wise's identity is a single vivid lime-green primary (#9fe870) carrying DARK
+ * ink text, set on a sage-tinted canvas (#e8ebe6) with white cards, near-black
+ * olive ink, a friendly 24px rounded geometry, and a full semantic palette
+ * (positive / warning / negative). There is NO second brand accent — the green
+ * is the sole identity colour and is reserved for primary actions.
  *
- *     import tokens from "@/ui/styles/tokens.css?inline";
- *     shadowRoot.adoptedStyleSheets = [sheetFrom(tokens)];
+ * This file contains ONLY plain CSS custom properties (no Tailwind directives)
+ * so it can be injected into closed Shadow DOM roots. Tokens are declared on
+ * BOTH `:root` (popup / options documents) and `:host` (content-script Shadow
+ * DOM). Token NAMES are kept stable across re-skins (primary, on-primary,
+ * canvas, ink, accent-*, …) so component code does not need to change when the
+ * brand changes — only the values here move.
  *
- * Custom properties are declared on BOTH `:root` (for the popup / options
- * pages that render in the main document) and `:host` (for content-script UI
- * mounted inside a Shadow DOM, where `:root` does not match the shadow root).
- * Authoring them in both places guarantees the tokens resolve in every
- * surface the extension renders into.
- *
- * THEMING
- * -------
- * The LIGHT theme is the default (declared on `:root, :host`). A premium Notion
- * DARK theme is applied automatically via `@media (prefers-color-scheme: dark)`
- * and can also be forced with `[data-acx-theme="dark"]` / `:host([data-acx-theme="dark"])`
- * (forcing wins over the media query because it is declared after it). Only the
- * tokens that actually change between themes are overridden; the type/spacing/
- * radius scales are theme-independent and live on the base block.
- *
- * All token names are prefixed `--acx-` to avoid colliding with host-page
- * variables when these styles leak adjacent to (but never into) a closed
- * shadow root.
+ * THEMING: LIGHT is the default. A Wise-flavoured DARK theme (the brand's
+ * "ink + green" polarity) activates via `prefers-color-scheme: dark` and can be
+ * forced with `[data-acx-theme="dark"|"light"]`.
  */
 
 :root,
 :host {
-  /* ── Color: brand & structural accent ───────────────────────────── */
-  /* Notion blue is reserved for primary actions, links, and focus only. */
-  --acx-color-primary: #0075de;
-  --acx-color-primary-active: #005bab;
-  --acx-color-secondary: #213183;
-  --acx-color-on-primary: #ffffff;
+  /* ── Brand & accent — the lime-green Wise primary ───────────────── */
+  /* Wise green is the sole identity colour, reserved for primary actions.
+   * It carries DARK ink text (not white) — that contrast is the brand. */
+  --acx-color-primary: #9fe870;
+  --acx-color-primary-active: #cdffad;
+  --acx-color-secondary: #163300; /* deep forest ink, for inverted bands */
+  --acx-color-on-primary: #0e0f0c;
+  /* Soft green tints for badges / subtle brand fills. */
+  --acx-color-primary-pale: #e2f6d5;
+  --acx-color-primary-neutral: #c5edab;
 
-  /* ── Color: surfaces ────────────────────────────────────────────── */
-  --acx-color-canvas: #ffffff;
-  --acx-color-canvas-soft: #f6f5f4;
+  /* ── Surfaces ───────────────────────────────────────────────────── */
+  --acx-color-canvas: #e8ebe6; /* sage-tinted page background (brand mood) */
+  --acx-color-canvas-soft: #ffffff; /* white card interiors on the sage canvas */
   --acx-color-surface: #ffffff;
-  /* A slightly raised surface for popovers/menus stacked above cards. */
   --acx-color-surface-raised: #ffffff;
-  --acx-color-hairline: #e6e6e6;
-  /* A stronger hairline for emphasized separators / focused fields. */
-  --acx-color-hairline-strong: #d8d6d3;
+  --acx-color-hairline: #d4d8d0; /* soft sage hairline */
+  --acx-color-hairline-strong: #0e0f0c; /* ink 1px border for inputs (Wise) */
 
-  /* ── Color: ink (text) ──────────────────────────────────────────── */
-  --acx-color-ink: #1a1a1a;
-  --acx-color-ink-secondary: #31302e;
-  --acx-color-ink-muted: #615d59;
-  --acx-color-ink-faint: #a39e98;
+  /* ── Ink (text) — near-black with olive warmth ──────────────────── */
+  --acx-color-ink: #0e0f0c;
+  --acx-color-ink-secondary: #454745; /* body */
+  --acx-color-ink-muted: #868685; /* mute — captions/placeholder */
+  --acx-color-ink-faint: #a6a8a4;
 
-  /* ── Color: semantic interaction fills (theme-adaptive) ─────────── */
-  /* Subtle resting fill (icon buttons, placeholder chips). */
-  --acx-fill-subtle: rgba(0, 0, 0, 0.05);
-  /* Hover fill for list rows / menu items. */
-  --acx-fill-hover: rgba(0, 0, 0, 0.055);
-  /* Pressed/active fill. */
-  --acx-fill-active: rgba(0, 0, 0, 0.09);
-  /* Modal/scrim backdrop behind dialogs. */
-  --acx-scrim: rgba(0, 0, 0, 0.32);
-  /* A faint top highlight used on elevated dark surfaces (no-op in light). */
+  /* ── Semantic palette (Wise positive / warning / negative) ──────── */
+  --acx-color-positive: #2ead4b;
+  --acx-color-positive-deep: #054d28;
+  --acx-color-warning: #ffd11a;
+  --acx-color-warning-deep: #b86700;
+  --acx-color-negative: #d03238;
+  --acx-color-negative-deep: #a72027;
+  --acx-color-negative-bg: #320707;
+
+  /* ── Semantic interaction fills (theme-adaptive) ────────────────── */
+  --acx-fill-subtle: rgba(14, 15, 12, 0.05);
+  --acx-fill-hover: rgba(14, 15, 12, 0.06);
+  --acx-fill-active: rgba(14, 15, 12, 0.1);
+  --acx-scrim: rgba(14, 15, 12, 0.4);
   --acx-edge-highlight: transparent;
 
-  /* ── Color: decorative sticker palette (illustration only) ──────── */
-  --acx-color-accent-sky: #62aef0;
-  --acx-color-accent-purple: #d6b6f6;
-  --acx-color-accent-purple-deep: #391c57;
-  --acx-color-accent-pink: #ff64c8;
-  --acx-color-accent-orange: #dd5b00;
-  --acx-color-accent-orange-deep: #793400;
-  --acx-color-accent-teal: #2a9d99;
-  --acx-color-accent-green: #1aae39;
-  --acx-color-accent-brown: #523410;
+  /* ── Accent tokens (kept by NAME for back-compat; Wise values) ──── */
+  /* Wise has no decorative sticker palette — these now map onto Wise's
+   * semantic + tertiary accents so existing `accent-*` class references resolve
+   * to on-brand colours. */
+  --acx-color-accent-green: #2ead4b; /* positive */
+  --acx-color-accent-green-deep: #054d28;
+  --acx-color-accent-sky: #38c8ff; /* Wise tertiary cyan */
+  --acx-color-accent-cyan: #38c8ff;
+  --acx-color-accent-orange: #ffc091; /* Wise tertiary peach */
+  --acx-color-accent-orange-deep: #a72027; /* negative-deep (error ink) */
+  --acx-color-accent-purple: #c5edab;
+  --acx-color-accent-purple-deep: #054d28;
+  --acx-color-accent-pink: #ffc091;
+  --acx-color-accent-teal: #2ead4b;
+  --acx-color-accent-brown: #4a3b1c;
 
   /* ── Typography: family ─────────────────────────────────────────── */
-  /* NotionInter is a proprietary tuning of Inter — substitute Inter directly. */
-  --acx-font-sans: "Inter", -apple-system, system-ui, "Segoe UI", Helvetica,
+  /* Wise Sans is proprietary; Inter weight 900 substitutes for the heavy
+   * display voice, with Inter for sub-display + body (the brand's real face). */
+  --acx-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica,
     Arial, sans-serif;
-  --acx-font-feature-settings: "lnum" 1, "locl" 1;
+  --acx-font-feature-settings: "calt" 1;
 
   /* ── Typography scale ───────────────────────────────────────────── */
-  /* Each role exposes size / weight / line-height / letter-spacing. */
+  /* Role names kept stable; weights tuned toward Wise's heavier voice
+   * (display weight 900, headings 700, strong body/buttons 600). */
   --acx-text-display-1: 64px;
-  --acx-text-display-1-weight: 700;
-  --acx-text-display-1-line-height: 1;
-  --acx-text-display-1-letter-spacing: -2.125px;
+  --acx-text-display-1-weight: 900;
+  --acx-text-display-1-line-height: 1.02;
+  --acx-text-display-1-letter-spacing: -1px;
 
-  --acx-text-display-2: 54px;
-  --acx-text-display-2-weight: 700;
-  --acx-text-display-2-line-height: 1.04;
-  --acx-text-display-2-letter-spacing: -1.875px;
+  --acx-text-display-2: 47px;
+  --acx-text-display-2-weight: 900;
+  --acx-text-display-2-line-height: 1.05;
+  --acx-text-display-2-letter-spacing: -0.5px;
 
   --acx-text-heading-1: 40px;
-  --acx-text-heading-1-weight: 700;
-  --acx-text-heading-1-line-height: 1.1;
-  --acx-text-heading-1-letter-spacing: -1px;
+  --acx-text-heading-1-weight: 900;
+  --acx-text-heading-1-line-height: 1.05;
+  --acx-text-heading-1-letter-spacing: -0.5px;
 
-  --acx-text-heading-2: 26px;
+  --acx-text-heading-2: 32px;
   --acx-text-heading-2-weight: 700;
-  --acx-text-heading-2-line-height: 1.23;
-  --acx-text-heading-2-letter-spacing: -0.625px;
+  --acx-text-heading-2-line-height: 1.2;
+  --acx-text-heading-2-letter-spacing: -0.5px;
 
-  --acx-text-heading-3: 22px;
+  --acx-text-heading-3: 24px;
   --acx-text-heading-3-weight: 700;
-  --acx-text-heading-3-line-height: 1.27;
-  --acx-text-heading-3-letter-spacing: -0.25px;
+  --acx-text-heading-3-line-height: 1.3;
+  --acx-text-heading-3-letter-spacing: -0.4px;
 
   --acx-text-title: 20px;
   --acx-text-title-weight: 600;
   --acx-text-title-line-height: 1.4;
-  --acx-text-title-letter-spacing: -0.125px;
+  --acx-text-title-letter-spacing: -0.2px;
 
   --acx-text-body-md: 16px;
   --acx-text-body-md-weight: 400;
   --acx-text-body-md-line-height: 1.5;
   --acx-text-body-md-letter-spacing: 0;
 
-  --acx-text-body-sm: 15px;
+  --acx-text-body-sm: 14px;
   --acx-text-body-sm-weight: 400;
-  --acx-text-body-sm-line-height: 1.33;
+  --acx-text-body-sm-line-height: 1.43;
   --acx-text-body-sm-letter-spacing: 0;
 
   --acx-text-button: 16px;
-  --acx-text-button-weight: 500;
+  --acx-text-button-weight: 600;
   --acx-text-button-line-height: 1.5;
   --acx-text-button-letter-spacing: 0;
 
-  --acx-text-caption: 14px;
+  --acx-text-caption: 12px;
   --acx-text-caption-weight: 400;
-  --acx-text-caption-line-height: 1.43;
+  --acx-text-caption-line-height: 1.33;
   --acx-text-caption-letter-spacing: 0;
 
   --acx-text-eyebrow: 12px;
   --acx-text-eyebrow-weight: 600;
   --acx-text-eyebrow-line-height: 1.33;
-  --acx-text-eyebrow-letter-spacing: 0.125px;
+  --acx-text-eyebrow-letter-spacing: 0.04em;
 
-  /* ── Spacing scale (8px base) ───────────────────────────────────── */
-  --acx-spacing-xxs: 4px;
-  --acx-spacing-xs: 8px;
-  --acx-spacing-sm: 12px;
-  --acx-spacing-md: 16px;
-  --acx-spacing-lg: 24px;
-  --acx-spacing-xl: 28px;
+  /* ── Spacing scale (4px base, Wise) ─────────────────────────────── */
+  --acx-spacing-xxs: 2px;
+  --acx-spacing-xs: 4px;
+  --acx-spacing-sm: 8px;
+  --acx-spacing-md: 12px;
+  --acx-spacing-lg: 16px;
+  --acx-spacing-xl: 24px;
   --acx-spacing-xxl: 32px;
 
-  /* ── Border radius scale ────────────────────────────────────────── */
-  --acx-radius-xs: 4px;
-  --acx-radius-sm: 5px;
-  --acx-radius-md: 8px;
-  --acx-radius-lg: 12px;
-  --acx-radius-xl: 16px;
+  /* ── Border radius scale (Wise — generous, friendly) ────────────── */
+  /* xl 24px is Wise's canonical button + card radius. */
+  --acx-radius-xs: 6px;
+  --acx-radius-sm: 8px;
+  --acx-radius-md: 12px;
+  --acx-radius-lg: 16px;
+  --acx-radius-xl: 24px;
   --acx-radius-full: 9999px;
 
-  /* ── Elevation (barely-there layered shadows) ───────────────────── */
-  /* Level 0 (flat) is a hairline border + no shadow — see --acx-color-hairline. */
-  /* Level 1 — Soft: 4-stop micro-shadow for raised cards / floating buttons. */
-  --acx-shadow-soft: rgba(15, 15, 15, 0.02) 0px 0.175px 1.041px,
-    rgba(15, 15, 15, 0.035) 0px 0.8px 2.925px,
-    rgba(15, 15, 15, 0.045) 0px 2.025px 7.847px,
-    rgba(15, 15, 15, 0.06) 0px 4px 18px;
-  /* Level 2 — Elevated: deeper 5-stop stack for modals / popovers. */
-  --acx-shadow-elevated: rgba(15, 15, 15, 0.04) 0px 0.7px 2.2px,
-    rgba(15, 15, 15, 0.05) 0px 1.7px 5.3px, rgba(15, 15, 15, 0.06) 0px 3.1px 10px,
-    rgba(15, 15, 15, 0.08) 0px 5.6px 17.9px,
-    rgba(15, 15, 15, 0.12) 0px 23px 52px;
+  /* ── Elevation ──────────────────────────────────────────────────── */
+  /* Wise leans on surface contrast (white cards on sage) for elevation; these
+   * soft warm shadows are used only for floating popovers / toasts / modals. */
+  --acx-shadow-soft: rgba(14, 15, 12, 0.04) 0px 1px 2px,
+    rgba(14, 15, 12, 0.05) 0px 2px 8px, rgba(14, 15, 12, 0.06) 0px 8px 20px;
+  --acx-shadow-elevated: rgba(14, 15, 12, 0.06) 0px 2px 6px,
+    rgba(14, 15, 12, 0.08) 0px 8px 22px, rgba(14, 15, 12, 0.12) 0px 24px 56px;
 }
 
 /*
- * ── DARK THEME (automatic via system preference) ──────────────────────────
- * A premium Notion-style dark palette: a warm near-black canvas (#191919),
- * gently raised charcoal surfaces, hairlines drawn as low-alpha white so they
- * read as crisp 1px separators, near-white ink at Notion's ~81% alpha, and a
- * brightened, slightly desaturated accent blue that stays legible on dark.
- * Shadows deepen and a faint top edge-highlight is added so elevated surfaces
- * feel lifted rather than flat.
+ * ── DARK THEME (Wise "ink + green" polarity) ──────────────────────────────
+ * Wise's dark moment is a near-black olive ink canvas carrying the lime-green
+ * accent. We keep the green primary with dark text (the green is bright enough
+ * to remain legible), step the surfaces in warm charcoals, draw hairlines as
+ * low-alpha white, and brighten ink to near-white.
  */
 @media (prefers-color-scheme: dark) {
   :root,
   :host {
-    /* Brand accent — brightened for contrast on a dark canvas. */
-    --acx-color-primary: #3d96f5;
-    --acx-color-primary-active: #2f7fd6;
-    --acx-color-secondary: #2b3a8c;
-    --acx-color-on-primary: #ffffff;
+    --acx-color-primary: #9fe870;
+    --acx-color-primary-active: #cdffad;
+    --acx-color-secondary: #9fe870;
+    --acx-color-on-primary: #0e0f0c;
+    --acx-color-primary-pale: #1f2d12;
+    --acx-color-primary-neutral: #2a3d18;
 
-    /* Surfaces — warm Notion charcoals, gently stepped for depth. */
-    --acx-color-canvas: #191919;
-    --acx-color-canvas-soft: #1e1e1e;
-    --acx-color-surface: #252525;
-    --acx-color-surface-raised: #2c2c2c;
-    --acx-color-hairline: rgba(255, 255, 255, 0.094);
-    --acx-color-hairline-strong: rgba(255, 255, 255, 0.16);
+    --acx-color-canvas: #0e0f0c;
+    --acx-color-canvas-soft: #17190f;
+    --acx-color-surface: #1c1e16;
+    --acx-color-surface-raised: #23261c;
+    --acx-color-hairline: rgba(255, 255, 255, 0.1);
+    --acx-color-hairline-strong: rgba(255, 255, 255, 0.24);
 
-    /* Ink — near-white at Notion's documented alphas. */
-    --acx-color-ink: rgba(255, 255, 255, 0.9);
-    --acx-color-ink-secondary: rgba(255, 255, 255, 0.72);
+    --acx-color-ink: rgba(255, 255, 255, 0.92);
+    --acx-color-ink-secondary: rgba(255, 255, 255, 0.7);
     --acx-color-ink-muted: rgba(255, 255, 255, 0.46);
     --acx-color-ink-faint: rgba(255, 255, 255, 0.32);
 
-    /* Interaction fills — low-alpha WHITE so they lighten on dark. */
-    --acx-fill-subtle: rgba(255, 255, 255, 0.055);
-    --acx-fill-hover: rgba(255, 255, 255, 0.085);
+    --acx-color-positive: #5bd178;
+    --acx-color-positive-deep: #9fe870;
+    --acx-color-warning: #ffd11a;
+    --acx-color-warning-deep: #ffb84d;
+    --acx-color-negative: #ff6b70;
+    --acx-color-negative-deep: #ff9498;
+    --acx-color-negative-bg: #2a0a0b;
+
+    --acx-fill-subtle: rgba(255, 255, 255, 0.05);
+    --acx-fill-hover: rgba(255, 255, 255, 0.08);
     --acx-fill-active: rgba(255, 255, 255, 0.13);
-    --acx-scrim: rgba(0, 0, 0, 0.6);
-    /* Faint top highlight: makes elevated dark surfaces feel premium. */
+    --acx-scrim: rgba(0, 0, 0, 0.62);
     --acx-edge-highlight: rgba(255, 255, 255, 0.06);
 
-    /* Elevation — deeper black plus a subtle ambient spread on dark. */
-    --acx-shadow-soft: rgba(0, 0, 0, 0.24) 0px 1px 2px,
-      rgba(0, 0, 0, 0.28) 0px 2px 6px, rgba(0, 0, 0, 0.32) 0px 6px 16px;
-    --acx-shadow-elevated: rgba(0, 0, 0, 0.32) 0px 2px 6px,
-      rgba(0, 0, 0, 0.38) 0px 8px 22px, rgba(0, 0, 0, 0.46) 0px 24px 56px;
+    --acx-color-accent-green: #5bd178;
+    --acx-color-accent-green-deep: #9fe870;
+    --acx-color-accent-sky: #38c8ff;
+    --acx-color-accent-cyan: #38c8ff;
+    --acx-color-accent-orange: #ffc091;
+    --acx-color-accent-orange-deep: #ff9498;
+    --acx-color-accent-purple: #c5edab;
+    --acx-color-accent-pink: #ffc091;
+    --acx-color-accent-teal: #5bd178;
+    --acx-color-accent-brown: #d8c9a8;
+
+    --acx-shadow-soft: rgba(0, 0, 0, 0.3) 0px 1px 2px,
+      rgba(0, 0, 0, 0.34) 0px 2px 8px, rgba(0, 0, 0, 0.4) 0px 8px 20px;
+    --acx-shadow-elevated: rgba(0, 0, 0, 0.4) 0px 2px 6px,
+      rgba(0, 0, 0, 0.46) 0px 8px 22px, rgba(0, 0, 0, 0.54) 0px 24px 56px;
   }
 }
 
-/*
- * ── DARK THEME (forced) ────────────────────────────────────────────────────
- * Declared AFTER the media query so an explicit `data-acx-theme="dark"` always
- * wins, letting a surface opt into dark regardless of the OS setting.
- */
+/* ── DARK THEME (forced) — wins over the media query ─────────────────────── */
 [data-acx-theme="dark"],
 :host([data-acx-theme="dark"]) {
-  --acx-color-primary: #3d96f5;
-  --acx-color-primary-active: #2f7fd6;
-  --acx-color-secondary: #2b3a8c;
-  --acx-color-on-primary: #ffffff;
+  --acx-color-primary: #9fe870;
+  --acx-color-primary-active: #cdffad;
+  --acx-color-secondary: #9fe870;
+  --acx-color-on-primary: #0e0f0c;
+  --acx-color-primary-pale: #1f2d12;
+  --acx-color-primary-neutral: #2a3d18;
 
-  --acx-color-canvas: #191919;
-  --acx-color-canvas-soft: #1e1e1e;
-  --acx-color-surface: #252525;
-  --acx-color-surface-raised: #2c2c2c;
-  --acx-color-hairline: rgba(255, 255, 255, 0.094);
-  --acx-color-hairline-strong: rgba(255, 255, 255, 0.16);
+  --acx-color-canvas: #0e0f0c;
+  --acx-color-canvas-soft: #17190f;
+  --acx-color-surface: #1c1e16;
+  --acx-color-surface-raised: #23261c;
+  --acx-color-hairline: rgba(255, 255, 255, 0.1);
+  --acx-color-hairline-strong: rgba(255, 255, 255, 0.24);
 
-  --acx-color-ink: rgba(255, 255, 255, 0.9);
-  --acx-color-ink-secondary: rgba(255, 255, 255, 0.72);
+  --acx-color-ink: rgba(255, 255, 255, 0.92);
+  --acx-color-ink-secondary: rgba(255, 255, 255, 0.7);
   --acx-color-ink-muted: rgba(255, 255, 255, 0.46);
   --acx-color-ink-faint: rgba(255, 255, 255, 0.32);
 
-  --acx-fill-subtle: rgba(255, 255, 255, 0.055);
-  --acx-fill-hover: rgba(255, 255, 255, 0.085);
+  --acx-color-positive: #5bd178;
+  --acx-color-positive-deep: #9fe870;
+  --acx-color-warning: #ffd11a;
+  --acx-color-warning-deep: #ffb84d;
+  --acx-color-negative: #ff6b70;
+  --acx-color-negative-deep: #ff9498;
+  --acx-color-negative-bg: #2a0a0b;
+
+  --acx-fill-subtle: rgba(255, 255, 255, 0.05);
+  --acx-fill-hover: rgba(255, 255, 255, 0.08);
   --acx-fill-active: rgba(255, 255, 255, 0.13);
-  --acx-scrim: rgba(0, 0, 0, 0.6);
+  --acx-scrim: rgba(0, 0, 0, 0.62);
   --acx-edge-highlight: rgba(255, 255, 255, 0.06);
 
-  --acx-shadow-soft: rgba(0, 0, 0, 0.24) 0px 1px 2px,
-    rgba(0, 0, 0, 0.28) 0px 2px 6px, rgba(0, 0, 0, 0.32) 0px 6px 16px;
-  --acx-shadow-elevated: rgba(0, 0, 0, 0.32) 0px 2px 6px,
-    rgba(0, 0, 0, 0.38) 0px 8px 22px, rgba(0, 0, 0, 0.46) 0px 24px 56px;
+  --acx-color-accent-green: #5bd178;
+  --acx-color-accent-orange: #ffc091;
+  --acx-color-accent-orange-deep: #ff9498;
+  --acx-color-accent-sky: #38c8ff;
+
+  --acx-shadow-soft: rgba(0, 0, 0, 0.3) 0px 1px 2px,
+    rgba(0, 0, 0, 0.34) 0px 2px 8px, rgba(0, 0, 0, 0.4) 0px 8px 20px;
+  --acx-shadow-elevated: rgba(0, 0, 0, 0.4) 0px 2px 6px,
+    rgba(0, 0, 0, 0.46) 0px 8px 22px, rgba(0, 0, 0, 0.54) 0px 24px 56px;
 }
 
-/*
- * ── LIGHT THEME (forced) ────────────────────────────────────────────────────
- * Allows a surface to opt INTO light even when the OS prefers dark. Mirrors the
- * default light values so it overrides the media query when set explicitly.
- */
+/* ── LIGHT THEME (forced) — opt back into light under a dark OS ───────────── */
 [data-acx-theme="light"],
 :host([data-acx-theme="light"]) {
-  --acx-color-primary: #0075de;
-  --acx-color-primary-active: #005bab;
-  --acx-color-secondary: #213183;
-  --acx-color-on-primary: #ffffff;
+  --acx-color-primary: #9fe870;
+  --acx-color-primary-active: #cdffad;
+  --acx-color-secondary: #163300;
+  --acx-color-on-primary: #0e0f0c;
+  --acx-color-primary-pale: #e2f6d5;
+  --acx-color-primary-neutral: #c5edab;
 
-  --acx-color-canvas: #ffffff;
-  --acx-color-canvas-soft: #f6f5f4;
+  --acx-color-canvas: #e8ebe6;
+  --acx-color-canvas-soft: #ffffff;
   --acx-color-surface: #ffffff;
   --acx-color-surface-raised: #ffffff;
-  --acx-color-hairline: #e6e6e6;
-  --acx-color-hairline-strong: #d8d6d3;
+  --acx-color-hairline: #d4d8d0;
+  --acx-color-hairline-strong: #0e0f0c;
 
-  --acx-color-ink: #1a1a1a;
-  --acx-color-ink-secondary: #31302e;
-  --acx-color-ink-muted: #615d59;
-  --acx-color-ink-faint: #a39e98;
+  --acx-color-ink: #0e0f0c;
+  --acx-color-ink-secondary: #454745;
+  --acx-color-ink-muted: #868685;
+  --acx-color-ink-faint: #a6a8a4;
 
-  --acx-fill-subtle: rgba(0, 0, 0, 0.05);
-  --acx-fill-hover: rgba(0, 0, 0, 0.055);
-  --acx-fill-active: rgba(0, 0, 0, 0.09);
-  --acx-scrim: rgba(0, 0, 0, 0.32);
+  --acx-fill-subtle: rgba(14, 15, 12, 0.05);
+  --acx-fill-hover: rgba(14, 15, 12, 0.06);
+  --acx-fill-active: rgba(14, 15, 12, 0.1);
+  --acx-scrim: rgba(14, 15, 12, 0.4);
   --acx-edge-highlight: transparent;
+
+  --acx-color-accent-green: #2ead4b;
+  --acx-color-accent-orange: #ffc091;
+  --acx-color-accent-orange-deep: #a72027;
+  --acx-color-accent-sky: #38c8ff;
 }

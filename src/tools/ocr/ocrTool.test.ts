@@ -34,20 +34,11 @@ import {
 const notifyMock = vi.hoisted(() => vi.fn());
 vi.mock("../../ui/notify", () => ({ notify: notifyMock }));
 
-// --- Mock tesseract.js so recognize() yields empty text (the no-text case). -
-const recognizeMock = vi.hoisted(() => vi.fn(async () => ({ data: { text: "" } })));
-const terminateMock = vi.hoisted(() => vi.fn(async () => {}));
-vi.mock("tesseract.js", () => ({
-  createWorker: vi.fn(async () => ({
-    recognize: recognizeMock,
-    terminate: terminateMock,
-  })),
-}));
-
 import { registerOcrTool } from "./ocrTool";
 import { getTool, ToolId, type Tool } from "../../content/tools";
 import { ErrorCode } from "../../shared/messaging";
 import { OcrMessageType } from "../../background/ocrHandlers";
+import { OffscreenMessageType } from "../../shared/offscreen";
 
 // ---------------------------------------------------------------------------
 // Environment shims: Image (onload), canvas 2d context, chrome.runtime, clipboard.
@@ -88,6 +79,10 @@ function installEnvironment(): void {
         drawImage: vi.fn(),
       }) as unknown as CanvasRenderingContext2D,
   );
+  // Canvas → data URL used to hand the crop to the offscreen OCR document.
+  vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue(
+    "data:image/png;base64,BBBB",
+  );
 
   // Deterministic device pixel ratio for cropRegion math.
   Object.defineProperty(window, "devicePixelRatio", {
@@ -103,7 +98,8 @@ function installEnvironment(): void {
     value: { writeText: clipboardWrite },
   });
 
-  // chrome.runtime.sendMessage → resolve the capture with a PNG data URL.
+  // chrome.runtime.sendMessage → fake the capture, offscreen-ensure, and the
+  // offscreen recognition (empty text → the no-text branch).
   (globalThis as unknown as { chrome: unknown }).chrome = {
     runtime: {
       lastError: undefined,
@@ -116,6 +112,15 @@ function installEnvironment(): void {
             ok: true,
             data: { dataUrl: "data:image/png;base64,AAAA" },
           });
+          return;
+        }
+        if (message.type === OcrMessageType.ENSURE_OFFSCREEN) {
+          callback({ ok: true, data: { ready: true } });
+          return;
+        }
+        if (message.type === OffscreenMessageType.RECOGNIZE) {
+          // No text detected → exercises the no-text branch (Req 15.5).
+          callback({ ok: true, data: { text: "" } });
           return;
         }
         callback({ ok: false, error: { code: "UNKNOWN", message: "no handler", recoverable: true } });
@@ -159,8 +164,6 @@ let original: Tool["run"];
 
 beforeEach(() => {
   notifyMock.mockClear();
-  recognizeMock.mockClear();
-  terminateMock.mockClear();
   clipboardWrite.mockClear();
   capturedRoots = [];
   document.body.innerHTML = "";
@@ -204,9 +207,6 @@ describe("OCR text extraction — no text found (Req 15.5)", () => {
 
     await runPromise;
 
-    // Recognition ran and yielded empty text → the no-text branch.
-    expect(recognizeMock).toHaveBeenCalledTimes(1);
-
     // No-text notification carries the OCR_NO_TEXT code (Req 15.5).
     const noTextCall = notifyMock.mock.calls.find(
       (call) => (call[0] as { code?: ErrorCode }).code === ErrorCode.OCR_NO_TEXT,
@@ -215,8 +215,5 @@ describe("OCR text extraction — no text found (Req 15.5)", () => {
 
     // The clipboard is left untouched when no text was found (Req 15.5).
     expect(clipboardWrite).not.toHaveBeenCalled();
-
-    // The worker is always terminated, even on the empty path.
-    expect(terminateMock).toHaveBeenCalledTimes(1);
   });
 });

@@ -83,17 +83,27 @@ export function langDirUrl(): string {
  * Build the `Partial<WorkerOptions>` for `createWorker` that pins every asset to
  * its local bundled copy (no remote code, Req 22.2). `gzip: true` matches the
  * bundled `eng.traineddata.gz`.
+ *
+ * `workerBlobURL: false` is REQUIRED: by default tesseract.js fetches the worker
+ * script and re-spawns it from a `blob:` URL, which strict page CSPs (e.g.
+ * YouTube's `script-src`/`worker-src`) forbid — "Creating a worker from
+ * 'blob:…' violates the following Content Security Policy directive". Disabling
+ * the blob wrapper makes tesseract load the worker DIRECTLY from `workerPath`
+ * (our `chrome-extension://` web-accessible resource), which is allowed
+ * regardless of the host page's CSP.
  */
 export function localWorkerOptions(): {
   workerPath: string;
   corePath: string;
   langPath: string;
   gzip: boolean;
+  workerBlobURL: boolean;
 } {
   return {
     workerPath: workerScriptUrl(),
     corePath: coreDirUrl(),
     langPath: langDirUrl(),
     gzip: true,
+    workerBlobURL: false,
   };
 }

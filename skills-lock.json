@@ -12,6 +12,12 @@
       "sourceType": "github",
       "skillPath": "skills/tailwind-4-docs/SKILL.md",
       "computedHash": "4900f575f24641b1af459cda37cbb8438ecf3f8f1a63148384197cb730895093"
+    },
+    "wise-ui-skills": {
+      "source": "ihlamury/design-skills",
+      "sourceType": "github",
+      "skillPath": "skills/wise/SKILL.md",
+      "computedHash": "3592a0bc0e3c7f412af1b7e74e0d993df95050bacb17837157687787a8a5344a"
     }
   }
 }

@@ -34,19 +34,29 @@
  * `src/background/ocrHandlers.ts`.
  */
 
-import { createWorker } from "tesseract.js";
 import { normalizeSelectionRect, type SelectionRect } from "./selectionRect";
-import { DEFAULT_OCR_LANG, localWorkerOptions } from "./tesseractAssets";
 import { createShadowHost, type ShadowHostHandle } from "../../ui/shadowHost";
 import { joinClasses } from "../../ui/primitives/classNames";
 import { notify } from "../../ui/notify";
 import { createMessage, isOk, type Response } from "../../shared/messaging";
 import { ErrorCode } from "../../shared/messaging";
+import { getCachedFeatureFlags } from "../../shared/settings";
 import { registerTool, ToolId, type ToolRun } from "../../content/tools";
+import {
+  NotepadMessageType,
+  type NotepadAppendPayload,
+  type NotepadAppendResult,
+} from "../notepad/notepad";
 import {
   OcrMessageType,
   type OcrCaptureResult,
+  type OcrEnsureOffscreenResult,
 } from "../../background/ocrHandlers";
+import {
+  OffscreenMessageType,
+  type OcrRecognizePayload,
+  type OcrRecognizeResult,
+} from "../../shared/offscreen";
 
 /** Toast text when extracted text is copied (Req 15.4). */
 const COPIED_TEXT = "text extracted and copied";
@@ -101,6 +111,44 @@ function sendToBackground<T, R>(type: string, payload: T): Promise<Response<R>> 
 
 /** Module-level handle to the active OCR overlay, if any. */
 let activeOverlay: ShadowHostHandle | null = null;
+
+/**
+ * Send a message to the OCR offscreen document and resolve with its `Response`.
+ * The message carries `target: "offscreen"` so the background router ignores it
+ * and only the offscreen document answers. `chrome.runtime.sendMessage`
+ * broadcasts to all extension contexts; the offscreen listener filters by type.
+ */
+function sendToOffscreen<T, R>(type: string, payload: T): Promise<Response<R>> {
+  return new Promise<Response<R>>((resolve) => {
+    try {
+      const message = { ...createMessage(type, payload), target: "offscreen" };
+      chrome.runtime.sendMessage(message, (response: Response<R>) => {
+        const lastError = chrome.runtime?.lastError;
+        if (lastError || !response) {
+          resolve({
+            ok: false,
+            error: {
+              code: ErrorCode.UNKNOWN,
+              message: lastError?.message ?? "OCR engine did not respond.",
+              recoverable: true,
+            },
+          });
+          return;
+        }
+        resolve(response);
+      });
+    } catch (cause) {
+      resolve({
+        ok: false,
+        error: {
+          code: ErrorCode.UNKNOWN,
+          message: cause instanceof Error ? cause.message : String(cause),
+          recoverable: true,
+        },
+      });
+    }
+  });
+}
 
 /** Returns `true` while the OCR selection overlay is open. */
 export function isOcrOverlayOpen(): boolean {
@@ -245,6 +293,133 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
 }
 
 /**
+ * Find a `<video>` element that (a) overlaps the selection rect and (b) actually
+ * has decoded frame data we can draw. `captureVisibleTab` composites a BLACK
+ * box over hardware-accelerated/playing video, so OCR over a video frame must
+ * read pixels straight from the element instead. Returns the best-overlapping
+ * ready video, or `null` when none qualifies (page/image OCR falls back to the
+ * tab capture).
+ */
+function findVideoForSelection(rect: SelectionRect): HTMLVideoElement | null {
+  const videos = Array.from(document.querySelectorAll("video"));
+  let best: HTMLVideoElement | null = null;
+  let bestOverlap = 0;
+
+  for (const video of videos) {
+    // HAVE_CURRENT_DATA (2) or better means a frame is available to draw.
+    if (video.readyState < 2) continue;
+    if (video.videoWidth === 0 || video.videoHeight === 0) continue;
+
+    const b = video.getBoundingClientRect();
+    if (b.width === 0 || b.height === 0) continue;
+
+    // Intersection area between the selection and the video's viewport box.
+    const ix = Math.max(rect.x, b.left);
+    const iy = Math.max(rect.y, b.top);
+    const iw = Math.min(rect.x + rect.width, b.right) - ix;
+    const ih = Math.min(rect.y + rect.height, b.bottom) - iy;
+    if (iw <= 0 || ih <= 0) continue;
+
+    const overlap = iw * ih;
+    if (overlap > bestOverlap) {
+      bestOverlap = overlap;
+      best = video;
+    }
+  }
+  return best;
+}
+
+/**
+ * Crop the selection region directly out of a `<video>` element's current
+ * frame. The video is drawn to an offscreen canvas at its native resolution,
+ * then the portion of the selection that overlaps the video's on-screen box is
+ * mapped from CSS/viewport coordinates into the video's intrinsic pixel space
+ * (accounting for `object-fit: contain/cover` letterboxing). Returns `null`
+ * when the selection does not overlap the rendered frame or the frame can't be
+ * read (e.g. a cross-origin/DRM-tainted canvas).
+ */
+function cropVideoFrame(
+  video: HTMLVideoElement,
+  rect: SelectionRect,
+): HTMLCanvasElement | null {
+  const box = video.getBoundingClientRect();
+
+  // The intersection of the selection with the video's on-screen box (CSS px).
+  const ix = Math.max(rect.x, box.left);
+  const iy = Math.max(rect.y, box.top);
+  const iw = Math.min(rect.x + rect.width, box.right) - ix;
+  const ih = Math.min(rect.y + rect.height, box.bottom) - iy;
+  if (iw <= 0 || ih <= 0) return null;
+
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+
+  // Work out how the intrinsic frame is laid out inside the element box. Most
+  // players use object-fit: contain (letterboxed); handle contain + fill, which
+  // covers the common cases without over-engineering cover/none.
+  const objectFit = getComputedStyle(video).objectFit || "contain";
+  let renderW = box.width;
+  let renderH = box.height;
+  let offsetX = 0;
+  let offsetY = 0;
+  if (objectFit === "contain" || objectFit === "scale-down") {
+    const scale = Math.min(box.width / vw, box.height / vh);
+    renderW = vw * scale;
+    renderH = vh * scale;
+    offsetX = (box.width - renderW) / 2;
+    offsetY = (box.height - renderH) / 2;
+  } else if (objectFit === "cover") {
+    const scale = Math.max(box.width / vw, box.height / vh);
+    renderW = vw * scale;
+    renderH = vh * scale;
+    offsetX = (box.width - renderW) / 2;
+    offsetY = (box.height - renderH) / 2;
+  }
+  // else "fill"/default: render fills the box (offset 0, renderW/H = box).
+
+  // Map the intersection (relative to the element box) into the rendered frame,
+  // then into intrinsic video pixels.
+  const relX = ix - box.left - offsetX;
+  const relY = iy - box.top - offsetY;
+  const sx = (relX / renderW) * vw;
+  const sy = (relY / renderH) * vh;
+  const sw = (iw / renderW) * vw;
+  const sh = (ih / renderH) * vh;
+
+  // Clamp to the frame bounds.
+  const cx = Math.max(0, Math.min(sx, vw));
+  const cy = Math.max(0, Math.min(sy, vh));
+  const cw = Math.max(0, Math.min(sw, vw - cx));
+  const ch = Math.max(0, Math.min(sh, vh - cy));
+  if (cw < 1 || ch < 1) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(cw);
+  canvas.height = Math.round(ch);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  try {
+    ctx.drawImage(
+      video,
+      cx,
+      cy,
+      cw,
+      ch,
+      0,
+      0,
+      canvas.width,
+      canvas.height,
+    );
+    // Touch the pixels to force a security error NOW if the frame is tainted
+    // (cross-origin/DRM), so we can fall back rather than OCR a blank canvas.
+    ctx.getImageData(0, 0, 1, 1);
+  } catch {
+    return null;
+  }
+  return canvas;
+}
+
+/**
  * Crop the selected region out of the captured tab image onto a canvas. The
  * selection rect is in CSS pixels but `captureVisibleTab` returns a
  * device-pixel bitmap, so the rect is scaled by `devicePixelRatio` and clamped
@@ -282,25 +457,42 @@ function cropRegion(
 }
 
 /**
- * Run bundled tesseract.js over the cropped canvas and return the recognised
- * text (trimmed). The worker is created with LOCAL asset paths only (Req 22.2)
- * and is always terminated, even on error, so no worker/WASM instance leaks.
+ * Recognise text in `canvas` by handing the cropped image to the OCR offscreen
+ * document, which runs the bundled tesseract.js worker under the EXTENSION's
+ * CSP. Running OCR in the page context fails on strict-CSP sites (YouTube),
+ * where the page CSP blocks the tesseract worker; the offscreen document avoids
+ * that entirely. Returns the recognised text (trimmed), or throws on failure.
  */
 async function recognizeText(canvas: HTMLCanvasElement): Promise<string> {
-  const worker = await createWorker(DEFAULT_OCR_LANG, undefined, {
-    ...localWorkerOptions(),
-  });
-  try {
-    const result = await worker.recognize(canvas);
-    return result.data.text.trim();
-  } finally {
-    await worker.terminate();
+  // Make sure the offscreen worker host exists before sending the image.
+  const ensured = await sendToBackground<void, OcrEnsureOffscreenResult>(
+    OcrMessageType.ENSURE_OFFSCREEN,
+    undefined,
+  );
+  if (!isOk(ensured) || ensured.data.ready !== true) {
+    throw new Error(
+      isOk(ensured)
+        ? "OCR engine could not start"
+        : ensured.error.message,
+    );
   }
+
+  const imageDataUrl = canvas.toDataURL("image/png");
+  const response = await sendToOffscreen<OcrRecognizePayload, OcrRecognizeResult>(
+    OffscreenMessageType.RECOGNIZE,
+    { imageDataUrl },
+  );
+  if (!isOk(response)) {
+    throw new Error(response.error.message);
+  }
+  return response.data.text;
 }
 
 /**
- * Copy extracted text to the clipboard and notify success (Req 15.4). Returns
- * `false` (showing an error toast) if the clipboard write fails.
+ * Copy extracted text to the clipboard and notify success (Req 15.4). Also
+ * appends the text to the Notepad when the `ocrToNotepad` feature flag is on
+ * (default), so OCR results join the "Copy All" history. Returns `false`
+ * (showing an error toast) if the clipboard write fails.
  */
 async function copyAndNotify(text: string): Promise<boolean> {
   try {
@@ -313,6 +505,18 @@ async function copyAndNotify(text: string): Promise<boolean> {
     });
     return false;
   }
+
+  // Also save into the Notepad history unless the user disabled it.
+  if (getCachedFeatureFlags().ocrToNotepad) {
+    const sourceUrl =
+      (globalThis as { location?: Location }).location?.href ?? undefined;
+    const payload: NotepadAppendPayload = sourceUrl ? { text, sourceUrl } : { text };
+    void sendToBackground<NotepadAppendPayload, NotepadAppendResult>(
+      NotepadMessageType.APPEND,
+      payload,
+    );
+  }
+
   notify({ kind: "success", text: COPIED_TEXT });
   return true;
 }
@@ -329,6 +533,31 @@ const runOcr: ToolRun = async (): Promise<void> => {
     return;
   }
 
+  // 1) Video-frame path (Req 15.3): `captureVisibleTab` renders playing/
+  //    hardware-accelerated video as a BLACK box, so if the selection overlaps
+  //    a ready <video> we read the frame pixels directly from the element.
+  const video = findVideoForSelection(outcome.rect);
+  if (video) {
+    try {
+      const videoCanvas = cropVideoFrame(video, outcome.rect);
+      if (videoCanvas) {
+        const text = await recognizeText(videoCanvas);
+        if (text === "") {
+          notify({ kind: "info", text: NO_TEXT_TEXT, code: ErrorCode.OCR_NO_TEXT });
+          return;
+        }
+        await copyAndNotify(text);
+        return;
+      }
+      // videoCanvas === null → frame unreadable (tainted/cross-origin); fall
+      // through to the tab-capture path below as a best effort.
+    } catch (error) {
+      console.error("[acx] OCR video-frame extraction failed:", error);
+      // Fall through to the tab-capture path.
+    }
+  }
+
+  // 2) Page/image path: capture the rendered tab and crop the selection.
   const capture = await sendToBackground<void, OcrCaptureResult>(
     OcrMessageType.CAPTURE_VISIBLE_TAB,
     undefined,

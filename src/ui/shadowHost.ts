@@ -28,8 +28,19 @@ import { applySharedStyles } from "./styles/theme";
 /** Distinctive attribute placed on every Alpha Cursor shadow host element. */
 export const HOST_ATTRIBUTE = "data-acx-ui";
 
+/**
+ * Attribute that pins a surface to an explicit Wise theme. The token sheet
+ * (`tokens.css`) targets `:host([data-acx-theme="light"|"dark"])`, so placing
+ * this on the shadow host element makes the forced-theme variables win inside
+ * the shadow root regardless of the host page's `prefers-color-scheme`.
+ */
+export const THEME_ATTRIBUTE = "data-acx-theme";
+
 /** Overlay layout strategies for a shadow host. */
 export type ShadowHostOverlay = "anchored" | "full-viewport";
+
+/** Which Wise theme to pin an injected surface to. */
+export type ShadowHostTheme = "light" | "dark";
 
 /** A viewport-relative point (CSS pixels) used to anchor an overlay host. */
 export interface ShadowHostPoint {
@@ -67,6 +78,15 @@ export interface CreateShadowHostOptions {
    * otherwise `document.documentElement`.
    */
   container?: ParentNode;
+  /**
+   * Wise theme to pin this surface to via the {@link THEME_ATTRIBUTE}. Defaults
+   * to `"dark"` so injected Shadow-DOM surfaces (Options_Panel, voice, search,
+   * image, media, tab shifter, screenshot dialogs, toast, OCR) always render in
+   * the brand's premium "ink + green" dark moment regardless of the host page's
+   * `prefers-color-scheme` (Req 20.8). Pass `null` to leave the surface unpinned
+   * (it will then follow the OS scheme).
+   */
+  theme?: ShadowHostTheme | null;
 }
 
 /** Handle returned by {@link createShadowHost} for controlling a mounted host. */
@@ -177,9 +197,17 @@ export function createShadowHost(
   const point: ShadowHostPoint = options.point ?? { x: 0, y: 0 };
   const zIndex = options.zIndex ?? DEFAULT_Z_INDEX;
   const surfaceId = options.surfaceId ?? "surface";
+  const theme: ShadowHostTheme | null =
+    options.theme === undefined ? "dark" : options.theme;
 
   const host = document.createElement("div");
   host.setAttribute(HOST_ATTRIBUTE, surfaceId);
+  // Pin the surface to the Wise theme (light by default) so the closed shadow
+  // root's tokens do not inherit the host page's prefers-color-scheme (Req
+  // 20.8). The token sheet matches `:host([data-acx-theme="..."])`.
+  if (theme) {
+    host.setAttribute(THEME_ATTRIBUTE, theme);
+  }
   applyHostStyles(host, overlay, point, zIndex);
 
   const root = host.attachShadow({ mode: "closed" });
@@ -190,6 +218,51 @@ export function createShadowHost(
   const cleanups = new Set<() => void>();
   let mounted: Node | null = null;
   let destroyed = false;
+
+  /** Margin (CSS px) kept between a clamped anchored panel and the viewport edge. */
+  const VIEWPORT_MARGIN = 8;
+
+  /**
+   * Reposition an anchored host so its mounted content stays within the
+   * viewport. Measures the first mounted element's rendered size and shifts the
+   * host left/up when it would overflow the right/bottom edge, and clamps to the
+   * top/left margins. Runs on the next frame so layout has settled.
+   */
+  function clampIntoViewport(): void {
+    if (overlay !== "anchored") return;
+    const raf =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : (cb: FrameRequestCallback) => setTimeout(() => cb(0), 0);
+    raf(() => {
+      if (destroyed) return;
+      const content =
+        host.firstElementChild instanceof HTMLElement
+          ? host.firstElementChild
+          : null;
+      const rect = content?.getBoundingClientRect();
+      const w = rect?.width ?? 0;
+      const h = rect?.height ?? 0;
+      const vw = typeof window !== "undefined" ? window.innerWidth : 0;
+      const vh = typeof window !== "undefined" ? window.innerHeight : 0;
+      if (!w || !h || !vw || !vh) return;
+
+      const left = parseFloat(host.style.left || "0");
+      const top = parseFloat(host.style.top || "0");
+      const maxLeft = vw - w - VIEWPORT_MARGIN;
+      const maxTop = vh - h - VIEWPORT_MARGIN;
+      const clampedLeft = Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(left, Math.max(VIEWPORT_MARGIN, maxLeft)),
+      );
+      const clampedTop = Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(top, Math.max(VIEWPORT_MARGIN, maxTop)),
+      );
+      host.style.left = `${clampedLeft}px`;
+      host.style.top = `${clampedTop}px`;
+    });
+  }
 
   const handle: ShadowHostHandle = {
     host,
@@ -209,6 +282,14 @@ export function createShadowHost(
       }
       root.appendChild(node);
       mounted = node;
+      // Keep anchored surfaces fully inside the viewport: after the content
+      // lays out, nudge the host so its mounted card does not spill off the
+      // right/bottom edge (or above/left of the viewport). This makes every
+      // anchored panel (voice, search, image, media, …) edge-safe without each
+      // caller re-implementing clamping.
+      if (overlay === "anchored") {
+        clampIntoViewport();
+      }
       return node;
     },
     unmount(): void {

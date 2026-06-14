@@ -4,7 +4,7 @@
 
 Alpha Cursor (domain: alphacursor.com) is a Chrome browser extension that delivers a productivity toolkit through a custom radial/context options panel. The panel is triggered by a middle mouse button click while the extension is in the ON state, behaving analogously to the native right-click context menu but presenting Alpha Cursor's own tools. The options surfaced are context-aware: the panel adapts based on whether the cursor is over an image, a video, selected text, or generic page content.
 
-The extension bundles twelve core tools: a cloud/local notepad clipboard, tab session save/restore, full-page screenshots, image saving with enhancement, cookie-consent popup removal, search-selected-text, a media downloader, a color picker, OCR text extraction, voice-to-text dictation, a tab shifter, and horizontal scroll. Cross-cutting concerns include a global ON/OFF toggle, per-user identity and data isolation for notepads, a settings/options page, a Notion-inspired visual design implemented with Tailwind CSS v4, and explicit permissions and privacy handling.
+The extension bundles twelve core tools: a cloud/local notepad clipboard, tab session save/restore, full-page screenshots, image saving with enhancement, cookie-consent popup removal, search-selected-text, a media downloader, a color picker, OCR text extraction, voice-to-text dictation, a tab shifter, and horizontal scroll. Cross-cutting concerns include a global ON/OFF toggle, per-user identity and data isolation for notepads, a settings/options page, a Wise-inspired visual design implemented with Tailwind CSS v4, and explicit permissions and privacy handling.
 
 This document captures the user's intended requirements. Several capabilities (notably media downloading from YouTube, Instagram, Facebook, and Twitter/X) may conflict with those platforms' Terms of Service, and Chrome Manifest V3 imposes architectural constraints (service-worker background scripts, restricted remote code execution, limited persistent background processing). These constraints are recorded as explicit requirements and feasibility notes so that they are addressed during design rather than discovered during implementation.
 
@@ -27,8 +27,8 @@ This document captures the user's intended requirements. Several capabilities (n
 - **Voice_Transcriber**: The component that captures microphone audio and converts speech to text.
 - **Tab_Shifter**: The radial panel that displays open tabs for quick switching.
 - **Media_Downloader**: The component that downloads audio/video from supported media sites.
-- **Notification**: A transient, Notion-styled in-page message confirming the outcome of an action.
-- **Design_System**: The Notion-inspired visual design language defined in DESIGN.md and the notion-ui-skills skill.
+- **Notification**: A transient, Wise-styled in-page message confirming the outcome of an action.
+- **Design_System**: The Wise-inspired visual design language defined in DESIGN.md and the wise-ui-skills skill.
 
 ## Requirements
 
@@ -61,7 +61,10 @@ This document captures the user's intended requirements. Several capabilities (n
 8. WHEN the cursor is near a viewport edge, THE Content_Script SHALL reposition the Options_Panel so that all options remain within the visible viewport.
 9. WHEN the user clicks outside the Options_Panel or presses the Escape key, THE Content_Script SHALL close the Options_Panel.
 10. WHEN the user selects an option in the Options_Panel, THE Content_Script SHALL close the Options_Panel and invoke the selected tool.
-11. THE Options_Panel SHALL conform to the Design_System defined in DESIGN.md and the notion-ui-skills skill.
+11. THE Options_Panel SHALL conform to the Design_System (the Wise-style visual language defined in DESIGN.md and the wise-ui-skills skill), rendering as a light sage/white surface with the lime-green primary accent regardless of the host page's color scheme.
+12. THE Options_Panel SHALL render each tool as a monochrome line icon drawn from a single cohesive icon set that matches the Design_System, and SHALL NOT use multi-color emoji glyphs.
+13. WHEN the user hovers the pointer over a tool option, or moves keyboard focus to it, THE Options_Panel SHALL display a Design_System-styled tooltip showing that tool's full descriptive name, and SHALL hide the tooltip when the pointer leaves or focus moves away.
+14. WHERE the user's system requests reduced motion, THE Options_Panel SHALL present the tooltip without motion.
 
 ### Requirement 3: Per-User Identity and Data Isolation
 
@@ -284,22 +287,23 @@ This document captures the user's intended requirements. Several capabilities (n
 2. THE Options_Page SHALL allow the user to configure the Notepad Separator, the "Search in" site list, and cloud-synchronization preference.
 3. WHEN the user changes a setting on the Options_Page, THE Extension SHALL persist the change to the active User_Account's settings within 500ms while allowing the user to continue interacting with the Options_Page.
 4. THE Options_Page SHALL display the current Toggle state and allow the user to change it.
-5. THE Options_Page SHALL conform to the Design_System defined in DESIGN.md and the notion-ui-skills skill.
+5. THE Options_Page SHALL conform to the Design_System defined in DESIGN.md and the wise-ui-skills skill.
 6. THE Options_Page SHALL provide a control to clear all Notepad_Entry items for the active User_Account, and SHALL require confirmation before clearing.
 
-### Requirement 20: Notion-Style Visual Design with Tailwind v4
+### Requirement 20: Wise-Style Visual Design with Tailwind v4
 
-**User Story:** As a user, I want the extension's interface to follow the Notion-inspired design language, so that it feels calm, consistent, and polished.
+**User Story:** As a user, I want the extension's interface to follow the Wise-inspired design language, so that it feels calm, friendly, and polished.
 
 #### Acceptance Criteria
 
 1. THE Extension SHALL implement all user-facing surfaces, including the Options_Panel, Options_Page, popup, and Notification, using Tailwind CSS v4.
 2. THE Extension SHALL apply the color tokens, typography scale, spacing scale, radius scale, and elevation treatments defined in DESIGN.md.
-3. THE Extension SHALL reserve the primary blue accent for primary actions, links, and focus states, consistent with the Design_System.
+3. THE Extension SHALL reserve the primary lime-green accent (carrying dark ink text) for primary actions, links, and focus states, consistent with the Design_System.
 4. THE Extension SHALL set interface text in the Inter typeface family as specified by the Design_System.
 5. WHEN an interactive element receives keyboard focus, THE Extension SHALL display a visible focus indicator consistent with the Design_System.
 6. WHERE the user's system requests reduced motion, THE Extension SHALL honor the reduced-motion preference in its animations.
 7. THE Extension SHALL provide an accessible label for every icon-only control.
+8. THE Extension SHALL render the Options_Panel and other injected Shadow-DOM surfaces with the Wise light theme by default, independent of the host page's `prefers-color-scheme`, so the panel does not appear dark on dark-mode pages.
 
 ### Requirement 21: Permissions and Privacy
 

@@ -448,3 +448,149 @@ export async function saveSyncPreference(
   const current = await loadSettings();
   await saveSettings({ ...current, syncPreference });
 }
+
+// ---------------------------------------------------------------------------
+// Per-feature flags (automatic content features)
+// ---------------------------------------------------------------------------
+//
+// The global Toggle (`enabled`) is the master switch. ON TOP of it, the user
+// can individually enable/disable each AUTOMATIC content feature — the ones
+// that act without an explicit click — from the Options page. All default ON so
+// the extension works out of the box right after install; users who don't want
+// a given behavior (e.g. drag-to-copy) can turn just that one off.
+//
+// Flags live at `acx:{profileId}:settings:features` in `chrome.storage.sync`
+// (fallback `local`) and are cached for synchronous content-script gating, the
+// same pattern as the `enabled` Toggle.
+
+/** Toggleable automatic features (each gated UNDER the global Toggle). */
+export interface FeatureFlags {
+  /** Copy highlighted text to the clipboard + notepad on left-drag release. */
+  dragCopy: boolean;
+  /** Keep a green highlight on drag-copied text until the page is refreshed. */
+  persistHighlight: boolean;
+  /** Save every Ctrl+C / copy into the notepad history. */
+  notepadCapture: boolean;
+  /** Also save OCR-extracted text into the notepad history. */
+  ocrToNotepad: boolean;
+  /** Automatically remove cookie-consent popups on page load. */
+  cookieRemoval: boolean;
+}
+
+/** Stable ordered keys for rendering the feature toggles in the Options page. */
+export const FEATURE_FLAG_KEYS: (keyof FeatureFlags)[] = [
+  "dragCopy",
+  "persistHighlight",
+  "notepadCapture",
+  "ocrToNotepad",
+  "cookieRemoval",
+];
+
+/** Every automatic feature defaults ON (works immediately after install). */
+export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
+  dragCopy: true,
+  persistHighlight: true,
+  notepadCapture: true,
+  ocrToNotepad: true,
+  cookieRemoval: true,
+};
+
+/** Profile-scoped key holding the {@link FeatureFlags}: `…:settings:features`. */
+export function featureFlagsKey(profileId: string): string {
+  return scopedKey(profileId, StorageDomain.SETTINGS, "features");
+}
+
+const FEATURES_KEY_SUFFIX = `${KEY_SEPARATOR}${StorageDomain.SETTINGS}${KEY_SEPARATOR}features`;
+
+/** True when `key` is an Alpha Cursor profile-scoped feature-flags key. */
+function isFeatureFlagsKey(key: string): boolean {
+  return key.startsWith(KEY_PREFIX) && key.endsWith(FEATURES_KEY_SUFFIX);
+}
+
+/** Last known feature flags, cached for synchronous content-script gating. */
+let cachedFlags: FeatureFlags | null = null;
+
+/** Back-fill any missing flag from the defaults so callers get a full record. */
+function normalizeFlags(stored: Partial<FeatureFlags> | undefined): FeatureFlags {
+  return { ...DEFAULT_FEATURE_FLAGS, ...(stored ?? {}) };
+}
+
+/**
+ * Synchronously return the last known feature flags, defaulting to
+ * {@link DEFAULT_FEATURE_FLAGS} (all ON) until a value has been loaded. Content
+ * features use this to gate themselves without awaiting storage.
+ */
+export function getCachedFeatureFlags(): FeatureFlags {
+  return cachedFlags ?? { ...DEFAULT_FEATURE_FLAGS };
+}
+
+/** Read the feature flags from sync, falling back to local. */
+async function readFlagsValue(
+  key: string,
+): Promise<Partial<FeatureFlags> | undefined> {
+  try {
+    const fromSync = await getSync<Partial<FeatureFlags>>(key);
+    if (fromSync && typeof fromSync === "object") return fromSync;
+    const fromLocal = await getLocal<Partial<FeatureFlags>>(key);
+    return fromLocal && typeof fromLocal === "object" ? fromLocal : undefined;
+  } catch {
+    try {
+      const fromLocal = await getLocal<Partial<FeatureFlags>>(key);
+      return fromLocal && typeof fromLocal === "object" ? fromLocal : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+/** Read the persisted feature flags (all-on default), updating the cache. */
+export async function getFeatureFlags(): Promise<FeatureFlags> {
+  const profileId = await requireProfile();
+  const stored = await readFlagsValue(featureFlagsKey(profileId));
+  const flags = normalizeFlags(stored);
+  cachedFlags = flags;
+  return flags;
+}
+
+/** Persist a single feature flag, leaving the others untouched (Req 19.3). */
+export async function setFeatureFlag(
+  key: keyof FeatureFlags,
+  value: boolean,
+): Promise<void> {
+  const profileId = await requireProfile();
+  const current = await getFeatureFlags();
+  const next: FeatureFlags = { ...current, [key]: value };
+  cachedFlags = next;
+  const storageKey = featureFlagsKey(profileId);
+  try {
+    await setSync<FeatureFlags>(storageKey, next);
+  } catch {
+    await setLocal<FeatureFlags>(storageKey, next);
+  }
+}
+
+/**
+ * Subscribe to feature-flag changes across contexts (mirrors
+ * {@link onEnabledChanged}). The cache is refreshed before `cb` fires. Returns
+ * an unsubscribe function.
+ */
+export function onFeatureFlagsChanged(
+  cb: (flags: FeatureFlags) => void,
+): () => void {
+  const listener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string,
+  ): void => {
+    if (areaName !== "sync" && areaName !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+      if (!isFeatureFlagsKey(key)) continue;
+      const next = normalizeFlags(
+        (change.newValue as Partial<FeatureFlags> | undefined) ?? undefined,
+      );
+      cachedFlags = next;
+      cb(next);
+    }
+  };
+  chrome.storage.onChanged.addListener(listener);
+  return () => chrome.storage.onChanged.removeListener(listener);
+}

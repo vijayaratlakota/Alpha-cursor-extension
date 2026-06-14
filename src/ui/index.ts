@@ -16,12 +16,14 @@ export {
 export {
   createShadowHost,
   HOST_ATTRIBUTE,
+  THEME_ATTRIBUTE,
 } from "./shadowHost";
 export type {
   ShadowHostHandle,
   CreateShadowHostOptions,
   ShadowHostOverlay,
   ShadowHostPoint,
+  ShadowHostTheme,
 } from "./shadowHost";
 
 // Notion UI primitives (task 6.2): plain-DOM factory functions for buttons,

@@ -359,7 +359,7 @@ function buildTosDialog(onAcknowledge: () => void): HTMLElement {
   dialog.appendChild(body);
 
   const actions = document.createElement("div");
-  actions.className = "flex items-center justify-end gap-xs mt-xs";
+  actions.className = "flex items-center justify-end gap-sm mt-xs";
 
   const cancel = document.createElement("button");
   cancel.type = "button";

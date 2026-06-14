@@ -64,11 +64,11 @@ export const DEFAULT_DURATION_MS = 3500;
 /** Duration of the entrance/exit transition (skipped under reduced motion). */
 const ANIMATION_MS = 180;
 
-/** Decorative dot colour per kind (sticker palette — decoration only). */
-const DOT_CLASS: Record<NotifyKind, string> = {
-  success: "bg-accent-green",
-  error: "bg-accent-orange",
-  info: "bg-accent-sky",
+/** Decorative dot colour per kind (Wise semantic palette — decoration only). */
+const DOT_COLOR: Record<NotifyKind, string> = {
+  success: "#9fe870", // lime-green primary
+  error: "#ff6b70", // negative
+  info: "#38c8ff", // tertiary sky
 };
 
 /**
@@ -104,6 +104,8 @@ function ensureStack(): HTMLElement {
   hostHandle = createShadowHost({
     overlay: "full-viewport",
     surfaceId: "toast",
+    // Wise "ink + green" dark moment — fixed regardless of host page scheme.
+    theme: "dark",
   });
 
   const stack = document.createElement("div");
@@ -133,13 +135,22 @@ function teardownIfEmpty(): void {
 /** Builds the toast element for a given set of options. */
 function buildToast(kind: NotifyKind, text: string, code?: ErrorCode): HTMLElement {
   const toast = document.createElement("div");
-  // ex-toast chrome: surface bg, ink text, body-sm, rounded-xl, sm/md padding,
-  // elevated shadow, hairline edge. `pointer-events-auto` re-enables clicks.
+  // Wise dark toast chrome. Colors are fixed inline (not token classes) so the
+  // toast reads as the brand's dark "ink + green" surface on ANY host page,
+  // independent of the token cascade's resolved color scheme.
   toast.className = joinClasses(
-    "pointer-events-auto inline-flex items-center gap-xs",
-    "bg-surface text-ink text-body-sm font-sans",
-    "rounded-xl py-sm px-md border border-hairline acx-elevated",
+    "pointer-events-auto inline-flex items-center gap-sm",
+    "font-sans text-body-sm",
   );
+  toast.style.background = "rgba(35, 38, 28, 0.82)";
+  toast.style.color = "#f4f6f0";
+  toast.style.border = "1px solid rgba(255, 255, 255, 0.12)";
+  toast.style.borderRadius = "9999px";
+  toast.style.padding = "10px 16px";
+  toast.style.fontWeight = "600";
+  toast.style.boxShadow = "rgba(0, 0, 0, 0.45) 0px 8px 24px";
+  toast.style.setProperty("-webkit-backdrop-filter", "blur(16px) saturate(160%)");
+  toast.style.backdropFilter = "blur(16px) saturate(160%)";
 
   // ARIA: errors interrupt (assertive/alert); success+info are polite/status.
   if (kind === "error") {
@@ -152,7 +163,8 @@ function buildToast(kind: NotifyKind, text: string, code?: ErrorCode): HTMLEleme
 
   const dot = document.createElement("span");
   dot.setAttribute("aria-hidden", "true");
-  dot.className = joinClasses("shrink-0 size-2 rounded-full", DOT_CLASS[kind]);
+  dot.className = "shrink-0 size-2 rounded-full";
+  dot.style.background = DOT_COLOR[kind];
   toast.appendChild(dot);
 
   const message = document.createElement("span");
@@ -162,7 +174,8 @@ function buildToast(kind: NotifyKind, text: string, code?: ErrorCode): HTMLEleme
 
   if (code) {
     const codeEl = document.createElement("span");
-    codeEl.className = "shrink-0 text-ink-faint text-eyebrow font-sans";
+    codeEl.className = "shrink-0 text-eyebrow font-sans";
+    codeEl.style.color = "rgba(255, 255, 255, 0.46)";
     codeEl.textContent = code;
     toast.appendChild(codeEl);
   }

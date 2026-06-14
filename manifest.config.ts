@@ -26,10 +26,18 @@ export default defineManifest({
     type: "module",
   },
 
-  // Toolbar popup surface (global Toggle, compact notepad, Copy All).
+  // Toolbar popup surface (global Toggle, compact notepad, Copy All). The
+  // toolbar action shows the Alpha Cursor brand icon; the full-page screenshot
+  // progress badge is drawn on top of this icon (see screenshotHandlers.ts).
   action: {
     default_title: "Alpha Cursor",
     default_popup: "src/popup/index.html",
+    default_icon: {
+      "16": "icons/favicon-96x96.png",
+      "32": "icons/favicon-96x96.png",
+      "48": "icons/favicon-96x96.png",
+      "128": "icons/web-app-manifest-192x192.png",
+    },
   },
 
   // Full configuration + privacy statement surface.
@@ -62,7 +70,16 @@ export default defineManifest({
   // API / `getUserMedia` (Req 21.2), and its denial is handled gracefully
   // (Req 21.3). `chrome.windows.update` (best-effort tab-shifter focus) needs no
   // permission. No `chrome.scripting` usage exists, so it is omitted.
-  permissions: ["storage", "tabs", "downloads"],
+  permissions: ["storage", "tabs", "downloads", "offscreen"],
+
+  // The OCR offscreen document runs the bundled tesseract.js WebAssembly core.
+  // MV3 extension pages default to `script-src 'self'`, which forbids compiling
+  // WASM ("neither 'wasm-eval' nor 'unsafe-eval' is an allowed source"). Adding
+  // `'wasm-unsafe-eval'` permits WebAssembly while still keeping the strict
+  // no-remote-code policy (only `'self'` scripts; no remote/eval JS).
+  content_security_policy: {
+    extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",
+  },
 
   // Host permission for `chrome.tabs.captureVisibleTab` (Tool 4 screenshot,
   // Tool 10 OCR), which requires host access to the captured page, and for the
@@ -83,5 +100,15 @@ export default defineManifest({
     },
   ],
 
-  icons: {},
+  // Extension icon shown in chrome://extensions, the install dialog, and the
+  // toolbar at various densities. Sourced from the brand favicon set under
+  // `public/icons/` (copied verbatim by crxjs/Vite).
+  icons: {
+    "16": "icons/favicon-96x96.png",
+    "48": "icons/favicon-96x96.png",
+    "96": "icons/favicon-96x96.png",
+    "128": "icons/web-app-manifest-192x192.png",
+    "192": "icons/web-app-manifest-192x192.png",
+    "512": "icons/web-app-manifest-512x512.png",
+  },
 });

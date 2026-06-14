@@ -32,6 +32,8 @@ import { registerTool, ToolId } from "./tools";
 import {
   createMessage,
   isOk,
+  isContextInvalidated,
+  CONTEXT_INVALIDATED_MESSAGE,
   type Response,
 } from "../shared/messaging";
 
@@ -83,6 +85,17 @@ function sendToBackground<T, R>(
   payload: T,
 ): Promise<Response<R>> {
   return new Promise<Response<R>>((resolve) => {
+    if (isContextInvalidated(undefined)) {
+      resolve({
+        ok: false,
+        error: {
+          code: "UNKNOWN",
+          message: CONTEXT_INVALIDATED_MESSAGE,
+          recoverable: true,
+        },
+      });
+      return;
+    }
     try {
       chrome.runtime.sendMessage(
         createMessage(type, payload),
@@ -93,7 +106,9 @@ function sendToBackground<T, R>(
               ok: false,
               error: {
                 code: "UNKNOWN",
-                message: lastError?.message ?? "No response from background.",
+                message: isContextInvalidated(lastError?.message)
+                  ? CONTEXT_INVALIDATED_MESSAGE
+                  : (lastError?.message ?? "No response from background."),
                 recoverable: true,
               },
             });
@@ -107,7 +122,11 @@ function sendToBackground<T, R>(
         ok: false,
         error: {
           code: "UNKNOWN",
-          message: cause instanceof Error ? cause.message : String(cause),
+          message: isContextInvalidated(cause)
+            ? CONTEXT_INVALIDATED_MESSAGE
+            : cause instanceof Error
+              ? cause.message
+              : String(cause),
           recoverable: true,
         },
       });
@@ -180,7 +199,7 @@ function buildTitle(text: string): HTMLElement {
 /** A horizontal row of action buttons aligned to the right. */
 function buildActionRow(buttons: HTMLElement[]): HTMLElement {
   const row = document.createElement("div");
-  row.className = "flex items-center justify-end gap-xs";
+  row.className = "flex items-center justify-end gap-sm";
   for (const button of buttons) row.appendChild(button);
   return row;
 }
@@ -391,7 +410,7 @@ function buildFolderRow(
   meta.appendChild(countEl);
 
   const controls = document.createElement("div");
-  controls.className = "flex items-center gap-xs shrink-0";
+  controls.className = "flex items-center gap-sm shrink-0";
 
   const restore = createButton({
     variant: "primary",

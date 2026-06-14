@@ -57,6 +57,10 @@ vi.mock("../shared/settings", async (importOriginal) => {
     saveSeparator: vi.fn(() => Promise.resolve()),
     saveSearchSites: vi.fn(() => Promise.resolve()),
     saveSyncPreference: vi.fn(() => Promise.resolve()),
+    getFeatureFlags: vi.fn(() =>
+      Promise.resolve({ ...actual.DEFAULT_FEATURE_FLAGS }),
+    ),
+    setFeatureFlag: vi.fn(() => Promise.resolve()),
   };
 });
 

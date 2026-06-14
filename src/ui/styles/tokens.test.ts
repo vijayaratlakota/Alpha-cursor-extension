@@ -3,13 +3,13 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
- * Task 3.2 — Smoke/snapshot test for the Notion design tokens.
+ * Smoke/snapshot test for the Wise design tokens.
  *
  * Approach: read the source token stylesheets (`tokens.css` and `tailwind.css`)
- * from disk and assert the key DESIGN.md values are present. This is the most
- * stable approach — it avoids invoking the Tailwind compiler in-test (which is
- * environment/version sensitive) while still guaranteeing the single source of
- * truth carries the Notion tokens and the Inter family. A snapshot of the raw
+ * from disk and assert the key wise/DESIGN.md values are present. This is the
+ * most stable approach — it avoids invoking the Tailwind compiler in-test
+ * (environment/version sensitive) while still guaranteeing the single source of
+ * truth carries the Wise tokens and the Inter family. A snapshot of the raw
  * `--acx-*` token block guards against accidental drift.
  *
  * _Requirements: 20.2 (apply DESIGN.md color/typography/spacing/radius/elevation
@@ -22,74 +22,68 @@ const tailwindCssPath = resolve(process.cwd(), "src/ui/styles/tailwind.css");
 const tokensCss = readFileSync(tokensCssPath, "utf8");
 const tailwindCss = readFileSync(tailwindCssPath, "utf8");
 
-describe("Notion design tokens (tokens.css)", () => {
-  it("declares the structural color tokens from DESIGN.md", () => {
-    // Notion blue is the single structural accent (Requirement 20.2/20.3).
-    expect(tokensCss).toContain("--acx-color-primary: #0075de;");
-    expect(tokensCss).toContain("--acx-color-primary-active: #005bab;");
-    expect(tokensCss).toContain("--acx-color-secondary: #213183;");
-    expect(tokensCss).toContain("--acx-color-on-primary: #ffffff;");
+describe("Wise design tokens (tokens.css)", () => {
+  it("declares the structural color tokens from wise/DESIGN.md", () => {
+    // Wise lime-green is the single structural accent, carrying DARK ink text.
+    expect(tokensCss).toContain("--acx-color-primary: #9fe870;");
+    expect(tokensCss).toContain("--acx-color-primary-active: #cdffad;");
+    expect(tokensCss).toContain("--acx-color-on-primary: #0e0f0c;");
+    // Soft green tints for badges / subtle brand fills.
+    expect(tokensCss).toContain("--acx-color-primary-pale: #e2f6d5;");
   });
 
-  it("declares the warm paper-calm surface tokens", () => {
-    expect(tokensCss).toContain("--acx-color-canvas: #ffffff;");
-    expect(tokensCss).toContain("--acx-color-canvas-soft: #f6f5f4;");
+  it("declares the sage-canvas surface tokens", () => {
+    // Sage-tinted page canvas with white card interiors (the brand mood).
+    expect(tokensCss).toContain("--acx-color-canvas: #e8ebe6;");
+    expect(tokensCss).toContain("--acx-color-canvas-soft: #ffffff;");
     expect(tokensCss).toContain("--acx-color-surface: #ffffff;");
-    expect(tokensCss).toContain("--acx-color-hairline: #e6e6e6;");
   });
 
-  it("declares the ink (text) color tokens", () => {
-    expect(tokensCss).toContain("--acx-color-ink: #1a1a1a;");
-    expect(tokensCss).toContain("--acx-color-ink-secondary: #31302e;");
-    expect(tokensCss).toContain("--acx-color-ink-muted: #615d59;");
-    expect(tokensCss).toContain("--acx-color-ink-faint: #a39e98;");
+  it("declares the ink (text) color tokens (near-black olive)", () => {
+    expect(tokensCss).toContain("--acx-color-ink: #0e0f0c;");
+    expect(tokensCss).toContain("--acx-color-ink-secondary: #454745;");
+    expect(tokensCss).toContain("--acx-color-ink-muted: #868685;");
   });
 
-  it("declares the decorative sticker palette", () => {
-    expect(tokensCss).toContain("--acx-color-accent-sky: #62aef0;");
-    expect(tokensCss).toContain("--acx-color-accent-purple: #d6b6f6;");
-    expect(tokensCss).toContain("--acx-color-accent-pink: #ff64c8;");
-    expect(tokensCss).toContain("--acx-color-accent-orange: #dd5b00;");
-    expect(tokensCss).toContain("--acx-color-accent-teal: #2a9d99;");
-    expect(tokensCss).toContain("--acx-color-accent-green: #1aae39;");
+  it("declares the Wise semantic palette", () => {
+    expect(tokensCss).toContain("--acx-color-positive: #2ead4b;");
+    expect(tokensCss).toContain("--acx-color-warning: #ffd11a;");
+    expect(tokensCss).toContain("--acx-color-negative: #d03238;");
   });
 
-  it("sets the Inter font family stack (NotionInter substitute)", () => {
+  it("sets the Inter font family stack (Wise Sans substitute)", () => {
     // Requirement 20.4 — interface text set in the Inter typeface family.
     expect(tokensCss).toContain('"Inter"');
-    expect(tokensCss).toMatch(
-      /--acx-font-sans:\s*"Inter",\s*-apple-system,\s*system-ui,\s*"Segoe UI",\s*Helvetica,\s*Arial,\s*sans-serif;/,
-    );
+    expect(tokensCss).toMatch(/--acx-font-sans:\s*"Inter",\s*system-ui/);
   });
 
-  it("declares the typography scale with Notion display tracking", () => {
-    // display-1: 64px / 700 / 1.0 / -2.125px (the signature tight tracking).
+  it("declares the typography scale with Wise's heavy display weight", () => {
+    // display-1: 64px / weight 900 (Wise's heavy display voice).
     expect(tokensCss).toContain("--acx-text-display-1: 64px;");
-    expect(tokensCss).toContain("--acx-text-display-1-weight: 700;");
-    expect(tokensCss).toContain("--acx-text-display-1-letter-spacing: -2.125px;");
+    expect(tokensCss).toContain("--acx-text-display-1-weight: 900;");
     expect(tokensCss).toContain("--acx-text-body-md: 16px;");
     expect(tokensCss).toContain("--acx-text-eyebrow: 12px;");
   });
 
-  it("declares the spacing scale (8px base)", () => {
-    expect(tokensCss).toContain("--acx-spacing-xxs: 4px;");
-    expect(tokensCss).toContain("--acx-spacing-md: 16px;");
-    expect(tokensCss).toContain("--acx-spacing-lg: 24px;");
-    expect(tokensCss).toContain("--acx-spacing-xxl: 32px;");
+  it("declares the spacing scale (4px base)", () => {
+    expect(tokensCss).toContain("--acx-spacing-xxs: 2px;");
+    expect(tokensCss).toContain("--acx-spacing-xs: 4px;");
+    expect(tokensCss).toContain("--acx-spacing-lg: 16px;");
+    expect(tokensCss).toContain("--acx-spacing-xl: 24px;");
   });
 
-  it("declares the border radius scale", () => {
-    expect(tokensCss).toContain("--acx-radius-xs: 4px;");
-    expect(tokensCss).toContain("--acx-radius-md: 8px;");
-    expect(tokensCss).toContain("--acx-radius-lg: 12px;");
+  it("declares the border radius scale (Wise 24px canonical)", () => {
+    expect(tokensCss).toContain("--acx-radius-md: 12px;");
+    expect(tokensCss).toContain("--acx-radius-lg: 16px;");
+    expect(tokensCss).toContain("--acx-radius-xl: 24px;");
     expect(tokensCss).toContain("--acx-radius-full: 9999px;");
   });
 
-  it("declares the barely-there elevation shadow tokens", () => {
+  it("declares the elevation shadow tokens", () => {
     expect(tokensCss).toContain("--acx-shadow-soft:");
     expect(tokensCss).toContain("--acx-shadow-elevated:");
-    // The deepest stop of the light elevated stack (warm near-black).
-    expect(tokensCss).toContain("rgba(15, 15, 15, 0.12) 0px 23px 52px");
+    // The deepest stop of the light elevated stack (warm near-black ink).
+    expect(tokensCss).toContain("rgba(14, 15, 12, 0.12) 0px 24px 56px");
   });
 
   it("declares a dark theme via prefers-color-scheme and a forced override", () => {
@@ -98,9 +92,9 @@ describe("Notion design tokens (tokens.css)", () => {
     // Forced dark / light overrides for explicit opt-in.
     expect(tokensCss).toContain('[data-acx-theme="dark"]');
     expect(tokensCss).toContain('[data-acx-theme="light"]');
-    // Dark canvas is the warm Notion near-black, and the accent brightens.
-    expect(tokensCss).toContain("#191919");
-    expect(tokensCss).toContain("#3d96f5");
+    // Wise dark canvas is the near-black olive ink; the green accent persists.
+    expect(tokensCss).toContain("#0e0f0c");
+    expect(tokensCss).toContain("#9fe870");
   });
 
   it("declares theme-adaptive semantic interaction fills and scrim", () => {
@@ -122,16 +116,20 @@ describe("Tailwind v4 theme mapping (tailwind.css)", () => {
     expect(tailwindCss).toContain('@import "./tokens.css";');
   });
 
-  it("exposes a @theme block mapping Notion tokens to Tailwind namespaces", () => {
+  it("exposes a @theme block mapping Wise tokens to Tailwind namespaces", () => {
     expect(tailwindCss).toContain("@theme {");
     expect(tailwindCss).toContain("--color-primary: var(--acx-color-primary);");
     expect(tailwindCss).toContain(
       "--color-canvas-soft: var(--acx-color-canvas-soft);",
     );
+    // Wise semantic + brand-tint tokens are exposed for utilities.
+    expect(tailwindCss).toContain("--color-positive: var(--acx-color-positive);");
+    expect(tailwindCss).toContain(
+      "--color-primary-pale: var(--acx-color-primary-pale);",
+    );
     expect(tailwindCss).toContain("--text-display-1: 64px;");
-    expect(tailwindCss).toContain("--text-display-1--letter-spacing: -2.125px;");
-    expect(tailwindCss).toContain("--spacing-lg: 24px;");
-    expect(tailwindCss).toContain("--radius-lg: 12px;");
+    expect(tailwindCss).toContain("--spacing-lg: 16px;");
+    expect(tailwindCss).toContain("--radius-xl: 24px;");
   });
 
   it("sets the Inter font family in the Tailwind theme", () => {

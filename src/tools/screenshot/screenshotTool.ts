@@ -54,7 +54,7 @@ import {
   type ScreenshotSegment,
 } from "./segments";
 import { notify } from "../../ui/notify";
-import { createShadowHost, type ShadowHostHandle } from "../../ui/shadowHost";
+import { createShadowHost } from "../../ui/shadowHost";
 import { joinClasses } from "../../ui/primitives/classNames";
 import { createCard, createButton } from "../../ui/primitives";
 import { createMessage, ErrorCode } from "../../shared/messaging";
@@ -66,6 +66,8 @@ import {
   type ScreenshotCheckpointResult,
   type ScreenshotDownloadPayload,
   type ScreenshotDownloadResult,
+  type ScreenshotProgressPayload,
+  type ScreenshotProgressResult,
 } from "../../background/screenshotHandlers";
 
 /**
@@ -91,6 +93,64 @@ const CAPTURE_FAILED_TEXT = "Screenshot capture failed";
 /** Promise-based sleep. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Tracks `position: fixed` / `position: sticky` elements so they can be hidden
+ * during a multi-segment capture. Such elements stay pinned in the viewport on
+ * every scroll step, so without intervention a fixed header/footer/nav gets
+ * captured into EVERY segment and stitched in repeatedly (the "header shows
+ * multiple times" bug). We let them render on the first (top) segment so the
+ * page still looks natural at the top, then hide them for all later segments so
+ * they appear exactly once in the stitched output.
+ */
+interface PinnedElements {
+  /** Hide every tracked fixed/sticky element (no layout shift — uses visibility). */
+  hide(): void;
+  /** Restore every tracked element to its original inline visibility. */
+  restore(): void;
+}
+
+/**
+ * Scan the document for elements whose COMPUTED position is `fixed` or
+ * `sticky` and return a handle to hide/restore them. Uses `visibility: hidden`
+ * (not `display: none`) so the page layout — and therefore the scroll geometry
+ * the segment plan was computed against — never shifts mid-capture.
+ */
+function collectPinnedElements(): PinnedElements {
+  const tracked: { el: HTMLElement; prevVisibility: string }[] = [];
+
+  const all = document.body
+    ? document.body.querySelectorAll<HTMLElement>("*")
+    : ([] as unknown as NodeListOf<HTMLElement>);
+  all.forEach((el) => {
+    let position = "";
+    try {
+      position = window.getComputedStyle(el).position;
+    } catch {
+      return;
+    }
+    if (position === "fixed" || position === "sticky") {
+      tracked.push({ el, prevVisibility: el.style.visibility });
+    }
+  });
+
+  return {
+    hide(): void {
+      for (const { el } of tracked) {
+        el.style.setProperty("visibility", "hidden", "important");
+      }
+    },
+    restore(): void {
+      for (const { el, prevVisibility } of tracked) {
+        if (prevVisibility) {
+          el.style.visibility = prevVisibility;
+        } else {
+          el.style.removeProperty("visibility");
+        }
+      }
+    },
+  };
 }
 
 /**
@@ -176,67 +236,46 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
 interface ProgressHandle {
   /** Update the visible progress fraction in `[0, 1]`. */
   update(fraction: number): void;
-  /** Remove the progress overlay. */
+  /** Remove the progress indicator. */
   destroy(): void;
 }
 
 /**
- * Show a Notion-styled progress indicator in a closed Shadow DOM (Req 9.7). The
- * indicator is a small centered card with a label, a determinate bar, and a
- * percentage that the orchestrator updates per captured segment.
+ * Drive a capture-progress indicator on the extension's TOOLBAR ICON BADGE,
+ * via the background service worker (Req 9.7). The badge lives entirely outside
+ * the web page, so — unlike an in-page overlay — it can NEVER be captured into
+ * the screenshot and never covers page content. The previous full-viewport
+ * card had to be hidden frame-by-frame during each capture; the badge needs no
+ * such juggling.
+ *
+ * All updates are best-effort and fire-and-forget: a messaging failure must not
+ * abort the capture.
  */
 function showProgress(): ProgressHandle {
-  const handle: ShadowHostHandle = createShadowHost({
-    overlay: "full-viewport",
-    surfaceId: "screenshot-progress",
+  // Show an immediate 0% so the user gets instant feedback the capture started.
+  void request<ScreenshotProgressPayload, ScreenshotProgressResult>(
+    ScreenshotMessageType.PROGRESS,
+    { progress: 0 },
+  ).catch(() => {
+    /* cosmetic only */
   });
-
-  const bar = document.createElement("div");
-  bar.className = joinClasses(
-    "h-full bg-primary rounded-full",
-    "motion-safe:transition-[width] motion-safe:duration-150 motion-safe:ease-out",
-  );
-  bar.style.width = "0%";
-
-  const track = document.createElement("div");
-  track.className = joinClasses(
-    "w-full h-2 rounded-full bg-fill-subtle overflow-hidden",
-  );
-  track.appendChild(bar);
-
-  const label = document.createElement("div");
-  label.className = "text-ink text-body-sm font-sans";
-  label.textContent = "Capturing full page…";
-
-  const percent = document.createElement("div");
-  percent.className = "text-ink-faint text-eyebrow font-sans tabular-nums";
-  percent.textContent = "0%";
-
-  const card = createCard({
-    variant: "elevated",
-    className: joinClasses(
-      "pointer-events-auto flex flex-col gap-sm min-w-[260px]",
-    ),
-    children: [label, track, percent],
-  });
-  card.setAttribute("role", "status");
-  card.setAttribute("aria-live", "polite");
-
-  // Center the card in the viewport.
-  const wrapper = document.createElement("div");
-  wrapper.className = "fixed inset-0 flex items-center justify-center";
-  wrapper.appendChild(card);
-  handle.mount(wrapper);
 
   return {
     update(fraction: number): void {
-      const clamped = Math.min(1, Math.max(0, fraction));
-      const pct = Math.round(clamped * 100);
-      bar.style.width = `${pct}%`;
-      percent.textContent = `${pct}%`;
+      void request<ScreenshotProgressPayload, ScreenshotProgressResult>(
+        ScreenshotMessageType.PROGRESS,
+        { progress: fraction },
+      ).catch(() => {
+        /* cosmetic only */
+      });
     },
     destroy(): void {
-      handle.destroy();
+      void request<ScreenshotProgressPayload, ScreenshotProgressResult>(
+        ScreenshotMessageType.PROGRESS,
+        { done: true },
+      ).catch(() => {
+        /* cosmetic only */
+      });
     },
   };
 }
@@ -252,6 +291,7 @@ function promptOutputFormat(): Promise<ScreenshotOutputFormat | null> {
     const handle = createShadowHost({
       overlay: "full-viewport",
       surfaceId: "screenshot-prompt",
+      theme: "dark",
     });
 
     let settled = false;
@@ -466,10 +506,23 @@ async function captureAndStitch(
   const dpr = metrics.devicePixelRatio;
   const deviceWidth = canvas.width;
 
+  // Fixed/sticky elements (headers, navs, footers, chat widgets) stay pinned in
+  // the viewport at every scroll step. Capture them on the first segment only,
+  // then hide them so they are not stitched into every subsequent segment
+  // (fixes the repeated-header bug).
+  const pinned = collectPinnedElements();
+
   try {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!;
       window.scrollTo(0, segment.scrollY);
+
+      // After the first (top) segment, hide pinned elements so they appear
+      // exactly once in the stitched image.
+      if (i === 1) {
+        pinned.hide();
+      }
+
       // Wait for the browser to paint the new scroll position, then honor the
       // captureVisibleTab rate limit before requesting the capture.
       await sleep(PAINT_DELAY_MS);
@@ -507,8 +560,9 @@ async function captureAndStitch(
       });
     }
   } finally {
-    // Always restore the page to where the user was (Req 9.2 auto-scroll is
-    // transparent to the user).
+    // Always restore pinned elements and the page scroll position so the
+    // capture is transparent to the user (Req 9.2 auto-scroll).
+    pinned.restore();
     window.scrollTo(originalScrollX, originalScrollY);
   }
 
