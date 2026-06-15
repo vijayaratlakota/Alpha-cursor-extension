@@ -209,6 +209,8 @@ interface VoicePanel {
   showResult(transcript: string): void;
   /** Replace the mic button's handler/label (used to flip Start↔Stop). */
   setStopHandler(onStop: () => void): void;
+  /** Wire the Backspace button (removes the last spoken word). */
+  setBackspaceHandler(onBackspace: () => void): void;
 }
 
 /**
@@ -237,36 +239,45 @@ function createVoicePanel(
   status.textContent = "Listening…";
 
   // Live transcript area. `aria-live=polite` announces updates without
-  // interrupting; `whitespace-pre-wrap` keeps spacing as recognized.
+  // interrupting; `whitespace-pre-wrap` keeps spacing as recognized. The screen
+  // sets a theme-appropriate text color (dark on the light CRT, light on the
+  // dark CRT) so the dictated input is always clearly readable.
   const transcriptEl = document.createElement("div");
   transcriptEl.className = joinClasses(
+    "acx-screen",
     "min-h-[3.5rem] max-h-40 overflow-auto",
-    "text-body-sm font-sans text-ink whitespace-pre-wrap",
-    "bg-surface rounded-xs border border-hairline p-sm",
+    "text-body-sm font-sans whitespace-pre-wrap",
   );
   transcriptEl.setAttribute("role", "status");
   transcriptEl.setAttribute("aria-live", "polite");
 
   // Control row: the mic/stop toggle plus a close affordance.
   const controls = document.createElement("div");
-  controls.className = "flex items-center gap-sm";
+  controls.className = "flex items-center gap-xs flex-wrap";
+
+  // Compact button sizing so the controls stay small (not the oversized pills).
+  const SMALL_BTN = "text-caption px-md py-xxs whitespace-nowrap";
 
   let micButton = createButton({
     variant: "primary",
     label: "Stop",
     icon: "⏹",
     ariaLabel: "Stop dictation",
+    className: SMALL_BTN,
   });
 
-  const closeButton = createButton({
-    variant: "icon-circular",
-    icon: "✕",
-    ariaLabel: "Close voice panel",
-    onClick: onClose,
+  // Backspace: removes the last spoken word so the user can correct a mistake
+  // and keep speaking (handler wired by the recognition driver).
+  const backspaceButton = createButton({
+    variant: "secondary",
+    label: "Backspace",
+    icon: "⌫",
+    ariaLabel: "Delete the last spoken word",
+    className: SMALL_BTN,
   });
 
   controls.appendChild(micButton);
-  controls.appendChild(closeButton);
+  controls.appendChild(backspaceButton);
 
   const card = createCard({
     variant: "elevated",
@@ -278,6 +289,33 @@ function createVoicePanel(
   });
 
   handle.mount(card);
+
+  // Close on Escape or outside-click (replaces the removed ✕ button). Capture
+  // phase so it wins over page handlers; deferred outside-click so the opening
+  // click is not treated as a dismissal.
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+    }
+  };
+  window.addEventListener("keydown", onKeyDown, true);
+  handle.onDestroy(() => window.removeEventListener("keydown", onKeyDown, true));
+
+  const onPointerDown = (event: MouseEvent): void => {
+    const path =
+      typeof event.composedPath === "function" ? event.composedPath() : [];
+    if (!path.includes(handle.host)) {
+      onClose();
+    }
+  };
+  setTimeout(() => {
+    window.addEventListener("mousedown", onPointerDown, true);
+    handle.onDestroy(() =>
+      window.removeEventListener("mousedown", onPointerDown, true),
+    );
+  }, 0);
 
   const showTranscript = (finalText: string, interimText: string): void => {
     // Settled text in full ink, interim hypotheses in a faint tail (Req 16.3).
@@ -304,10 +342,15 @@ function createVoicePanel(
       label: "Stop",
       icon: "⏹",
       ariaLabel: "Stop dictation",
+      className: SMALL_BTN,
       onClick: onStop,
     });
     micButton.replaceWith(next);
     micButton = next;
+  };
+
+  const setBackspaceHandler = (onBackspace: () => void): void => {
+    backspaceButton.addEventListener("click", onBackspace);
   };
 
   const showResult = (transcript: string): void => {
@@ -325,6 +368,7 @@ function createVoicePanel(
       label: "Copy",
       icon: "⎘",
       ariaLabel: "Copy transcript",
+      className: SMALL_BTN,
       disabled: transcript.length === 0,
       onClick: () => {
         void copyTranscript(transcript, onClose);
@@ -338,6 +382,7 @@ function createVoicePanel(
         label: "Insert",
         icon: "↵",
         ariaLabel: "Insert transcript into field",
+        className: SMALL_BTN,
         disabled: transcript.length === 0,
         onClick: () => {
           insertTranscript(target, transcript);
@@ -351,7 +396,7 @@ function createVoicePanel(
     micButton.replaceWith(actions);
   };
 
-  return { handle, showTranscript, showResult, setStopHandler };
+  return { handle, showTranscript, showResult, setStopHandler, setBackspaceHandler };
 }
 
 /** Copy the transcript to the clipboard, notifying success/failure (Req 16.4). */
@@ -419,10 +464,22 @@ export const runVoiceToText: ToolRun = (
   recognition.lang = document.documentElement.lang || navigator.language || "en-US";
 
   let finalTranscript = "";
+  // The engine's last-reported settled text (raw, unedited). Used purely as the
+  // baseline to compute the delta of newly recognized words. User edits like
+  // Backspace touch `finalTranscript` only, never this baseline, so deletions
+  // are never re-added when the next result arrives.
+  let engineFinalRaw = "";
   let stopped = false;
   let permissionDenied = false;
 
   let panel: VoicePanel | null = null;
+
+  /** Strip a trailing word (and its preceding whitespace) from `text`. */
+  const removeLastWord = (text: string): string => {
+    const trimmedEnd = text.replace(/\s+$/, "");
+    const lastSpace = trimmedEnd.search(/\s\S*$/);
+    return lastSpace === -1 ? "" : trimmedEnd.slice(0, lastSpace);
+  };
 
   const teardown = (): void => {
     try {
@@ -452,6 +509,15 @@ export const runVoiceToText: ToolRun = (
   };
   panel.setStopHandler(requestStop);
 
+  // Backspace removes the last spoken word from the running transcript so the
+  // user can correct a mistake and keep dictating. It edits only the displayed
+  // transcript — the engine baseline (`engineFinalRaw`) is left untouched so the
+  // next recognized words still append correctly after the edit.
+  panel.setBackspaceHandler(() => {
+    finalTranscript = removeLastWord(finalTranscript);
+    panel?.showTranscript(finalTranscript, "");
+  });
+
   const finalizeResult = (): void => {
     if (permissionDenied) return; // denial already handled (no result UI)
     panel?.showResult(finalTranscript.trim());
@@ -459,8 +525,17 @@ export const runVoiceToText: ToolRun = (
 
   recognition.onresult = (event: SpeechRecognitionEvent): void => {
     const { finalText, interimText } = buildTranscript(event.results);
-    finalTranscript = finalText;
-    panel?.showTranscript(finalText, interimText);
+    // Append only the NEWLY settled words (the delta beyond the engine's prior
+    // settled text) so earlier user edits (Backspace) are preserved.
+    if (finalText.length >= engineFinalRaw.length && finalText.startsWith(engineFinalRaw)) {
+      const delta = finalText.slice(engineFinalRaw.length);
+      if (delta) finalTranscript += delta;
+    } else if (finalText !== engineFinalRaw) {
+      // The engine revised earlier text (rare): fall back to its full version.
+      finalTranscript = finalText;
+    }
+    engineFinalRaw = finalText;
+    panel?.showTranscript(finalTranscript, interimText);
   };
 
   recognition.onerror = (event: SpeechRecognitionErrorEvent): void => {

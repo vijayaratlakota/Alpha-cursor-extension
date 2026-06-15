@@ -33,10 +33,10 @@ export default defineManifest({
     default_title: "Alpha Cursor",
     default_popup: "src/popup/index.html",
     default_icon: {
-      "16": "icons/favicon-96x96.png",
-      "32": "icons/favicon-96x96.png",
-      "48": "icons/favicon-96x96.png",
-      "128": "icons/web-app-manifest-192x192.png",
+      "16": "favicon-96x96.png",
+      "32": "favicon-96x96.png",
+      "48": "favicon-96x96.png",
+      "128": "web-app-manifest-192x192.png",
     },
   },
 
@@ -70,7 +70,7 @@ export default defineManifest({
   // API / `getUserMedia` (Req 21.2), and its denial is handled gracefully
   // (Req 21.3). `chrome.windows.update` (best-effort tab-shifter focus) needs no
   // permission. No `chrome.scripting` usage exists, so it is omitted.
-  permissions: ["storage", "tabs", "downloads", "offscreen"],
+  permissions: ["storage", "tabs", "downloads", "offscreen", "favicon"],
 
   // The OCR offscreen document runs the bundled tesseract.js WebAssembly core.
   // MV3 extension pages default to `script-src 'self'`, which forbids compiling
@@ -95,7 +95,7 @@ export default defineManifest({
   // 100% client-side with no remote code (Req 22.2).
   web_accessible_resources: [
     {
-      resources: ["tesseract/*", "fonts/*"],
+      resources: ["tesseract/*", "fonts/*", "_favicon/*"],
       matches: ["<all_urls>"],
     },
   ],
@@ -104,11 +104,11 @@ export default defineManifest({
   // toolbar at various densities. Sourced from the brand favicon set under
   // `public/icons/` (copied verbatim by crxjs/Vite).
   icons: {
-    "16": "icons/favicon-96x96.png",
-    "48": "icons/favicon-96x96.png",
-    "96": "icons/favicon-96x96.png",
-    "128": "icons/web-app-manifest-192x192.png",
-    "192": "icons/web-app-manifest-192x192.png",
-    "512": "icons/web-app-manifest-512x512.png",
+    "16": "favicon-96x96.png",
+    "48": "favicon-96x96.png",
+    "96": "favicon-96x96.png",
+    "128": "web-app-manifest-192x192.png",
+    "192": "web-app-manifest-192x192.png",
+    "512": "web-app-manifest-512x512.png",
   },
 });

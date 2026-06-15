@@ -32,7 +32,7 @@
   --acx-color-primary-neutral: #ffefa0;
 
   /* ── Surfaces ───────────────────────────────────────────────────── */
-  --acx-color-canvas: #bff0d0; /* mint arcade canvas */
+  --acx-color-canvas: #4503ff; /* indigo brand canvas (default) */
   --acx-color-canvas-soft: #ffffff; /* white card base */
   --acx-color-surface: #ffffff;
   --acx-color-surface-raised: #ffffff;
@@ -177,7 +177,7 @@
 /* Light mode: explicit (same as the default, for when the attr is forced). */
 [data-acx-theme="light"],
 :host([data-acx-theme="light"]) {
-  --acx-color-canvas: #bff0d0;
+  --acx-color-canvas: #4503ff;
   --acx-color-ink: #0a0118;
   --acx-color-ink-secondary: #2c1d55;
   --acx-color-ink-muted: #6b5b95;
@@ -255,42 +255,45 @@
 
 /*
  * ── DARK MODE ──────────────────────────────────────────────────────────────
- * The brutalist "ink + neon" night variant: a near-black canvas, dark panels
- * with bright lilac borders, white text, and a coloured offset shadow that
- * stays visible on black. The yellow primary persists. `data-acx-bg` is ignored
- * in dark mode (the canvas is fixed).
+ * A premium arcade night theme: warm near-black surfaces with gentle elevation
+ * steps, refined low-glare borders, crisp off-white text, and the yellow accent
+ * popping against the dark. CRT screens become classic phosphor-green terminals
+ * (handled in the component sheet). `data-acx-bg` is ignored in dark mode.
  */
 [data-acx-theme="dark"],
 :host([data-acx-theme="dark"]) {
   --acx-color-primary: #ffd913;
-  --acx-color-primary-active: #ffe957;
-  --acx-color-secondary: #ff5a5f;
-  --acx-color-on-primary: #0a0118;
-  --acx-color-primary-pale: #2c1d55;
-  --acx-color-primary-neutral: #3a2a6b;
+  --acx-color-primary-active: #ffe45c;
+  --acx-color-secondary: #ff6b6b;
+  --acx-color-on-primary: #14110a;
+  --acx-color-primary-pale: #2a2620;
+  --acx-color-primary-neutral: #38332a;
 
-  --acx-color-canvas: #050010;
-  --acx-color-canvas-soft: #15092e;
-  --acx-color-surface: #15092e;
-  --acx-color-surface-raised: #1d1140;
-  --acx-color-hairline: #b49aff;
-  --acx-color-hairline-strong: #ffffff;
+  /* Warm charcoal surfaces — layered elevation, not flat. */
+  --acx-color-canvas: #14171f;
+  --acx-color-canvas-soft: #1c2029;
+  --acx-color-surface: #20252f;
+  --acx-color-surface-raised: #29303c;
+  /* Borders: soft on panels, brighter for emphasis — never harsh pure-white. */
+  --acx-color-hairline: #3d4452;
+  --acx-color-hairline-strong: #5a6473;
 
-  --acx-color-ink: #ffffff;
-  --acx-color-ink-secondary: #d6c9ff;
-  --acx-color-ink-muted: #9488b8;
-  --acx-color-ink-faint: #6b5b95;
+  --acx-color-ink: #f4f6fa;
+  --acx-color-ink-secondary: #cfd6e2;
+  --acx-color-ink-muted: #97a1b2;
+  --acx-color-ink-faint: #69727f;
 
-  --acx-color-positive: #3ddc84;
+  --acx-color-positive: #4ade80;
   --acx-color-warning: #ffd913;
-  --acx-color-negative: #ff6b80;
+  --acx-color-negative: #ff7a7a;
 
-  --acx-fill-subtle: rgba(180, 154, 255, 0.1);
-  --acx-fill-hover: rgba(180, 154, 255, 0.18);
-  --acx-fill-active: rgba(180, 154, 255, 0.26);
-  --acx-scrim: rgba(0, 0, 0, 0.66);
+  --acx-fill-subtle: rgba(255, 255, 255, 0.04);
+  --acx-fill-hover: rgba(255, 255, 255, 0.08);
+  --acx-fill-active: rgba(255, 255, 255, 0.12);
+  --acx-scrim: rgba(0, 0, 0, 0.7);
 
-  --acx-shadow-soft: #b49aff 3px 3px 0px 0px;
-  --acx-shadow-elevated: #b49aff 6px 6px 0px 0px;
+  /* Deep, soft offset shadows — present but not muddy. */
+  --acx-shadow-soft: rgba(0, 0, 0, 0.55) 2px 2px 0px 0px;
+  --acx-shadow-elevated: rgba(0, 0, 0, 0.6) 5px 5px 0px 0px;
 }
 

@@ -64,6 +64,9 @@ vi.mock("../shared/settings", async (importOriginal) => {
     getTheme: vi.fn(() => Promise.resolve({ ...actual.DEFAULT_THEME })),
     setTheme: vi.fn(() => Promise.resolve()),
     onThemeChanged: vi.fn(() => () => {}),
+    getPanelStyle: vi.fn(() => Promise.resolve(actual.DEFAULT_PANEL_STYLE)),
+    setPanelStyle: vi.fn(() => Promise.resolve()),
+    onPanelStyleChanged: vi.fn(() => () => {}),
   };
 });
 

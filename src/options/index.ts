@@ -67,6 +67,10 @@ import {
   setTheme,
   THEME_BACKGROUNDS,
   DEFAULT_THEME,
+  getPanelStyle,
+  setPanelStyle,
+  DEFAULT_PANEL_STYLE,
+  type PanelStyle,
   type ThemePreference,
   type ThemeMode,
   type ThemeBackground,
@@ -770,6 +774,72 @@ function selectedModeVariant(): "secondary" {
 }
 
 // ---------------------------------------------------------------------------
+// Panel style control (arcade console vs radial wheel)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the middle-click panel-style picker: a two-option segmented control
+ * (Console / Radial). Persists via `setPanelStyle`; content scripts react live
+ * via `onPanelStyleChanged`. `onChange` receives the new style for status
+ * messaging.
+ */
+function createPanelStyleControl(
+  initial: PanelStyle,
+  onChange: (style: PanelStyle) => void,
+): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "flex flex-col gap-sm";
+
+  const row = document.createElement("div");
+  row.setAttribute("role", "radiogroup");
+  row.setAttribute("aria-label", "Middle-click panel style");
+  row.className = "flex items-center gap-sm";
+
+  let current: PanelStyle = initial;
+
+  const options: { id: PanelStyle; label: string }[] = [
+    { id: "console", label: "Console" },
+    { id: "radial", label: "Radial" },
+  ];
+
+  const buttons: { id: PanelStyle; el: HTMLButtonElement }[] = [];
+  const paint = (): void => {
+    for (const { id, el } of buttons) {
+      const selected = id === current;
+      el.setAttribute("aria-checked", String(selected));
+      el.style.background = selected
+        ? "var(--acx-color-primary)"
+        : "var(--acx-color-surface)";
+      el.style.color = "var(--acx-color-ink)";
+    }
+  };
+
+  for (const option of options) {
+    const btn = createButton({
+      variant: "secondary",
+      label: option.label,
+      ariaLabel: `${option.label} panel`,
+      onClick: () => {
+        current = option.id;
+        paint();
+        onChange(current);
+      },
+    });
+    btn.setAttribute("role", "radio");
+    // These segmented buttons are state indicators, not brand CTAs — neutralize
+    // the primitive's bold fill so the painted selected/idle state reads.
+    btn.style.removeProperty("background-color");
+    btn.style.removeProperty("color");
+    buttons.push({ id: option.id, el: btn });
+    row.appendChild(btn);
+  }
+
+  paint();
+  wrap.appendChild(row);
+  return wrap;
+}
+
+// ---------------------------------------------------------------------------
 // Feature toggles (per-feature automatic behaviors)
 // ---------------------------------------------------------------------------
 
@@ -1127,6 +1197,34 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
     themeBody,
   );
 
+  // ── Panel style ──────────────────────────────────────────────────────
+  const panelStyleBody = document.createElement("div");
+  panelStyleBody.className = "flex flex-col gap-sm";
+  const renderPanelStyle = (style: PanelStyle): void => {
+    panelStyleBody.replaceChildren(
+      createPanelStyleControl(style, (next) => {
+        void setPanelStyle(next);
+        status.show(
+          next === "console"
+            ? "Middle-click panel: arcade console."
+            : "Middle-click panel: radial wheel.",
+          "success",
+        );
+      }),
+    );
+  };
+  renderPanelStyle(DEFAULT_PANEL_STYLE);
+  void getPanelStyle()
+    .then(renderPanelStyle)
+    .catch(() => {
+      /* default already rendered */
+    });
+  const panelStyleCard = sectionCard(
+    "Middle-click panel",
+    "Choose how the panel looks when you middle-click: the arcade console (with a screen that names each tool and lists saved tabs you can pick with the mouse or ↑ ↓ Enter) or the original radial wheel.",
+    panelStyleBody,
+  );
+
   // ── Feature toggles ──────────────────────────────────────────────────
   // Seed from defaults (all on) then refine once the persisted flags resolve.
   const featuresBody = document.createElement("div");
@@ -1162,6 +1260,7 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
     header,
     toggleCard,
     themeCard,
+    panelStyleCard,
     featuresCard,
     separatorCard,
     searchCard,

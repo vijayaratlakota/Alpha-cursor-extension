@@ -17,6 +17,7 @@ import {
   getFeatureFlags,
   getCachedFeatureFlags,
   onFeatureFlagsChanged,
+  getPanelStyle,
 } from "../shared/settings";
 import {
   attachPanelTrigger,
@@ -177,6 +178,12 @@ export function bootstrapContent(): void {
       /* default all-on cache already applied */
     });
   onFeatureFlagsChanged(() => reconcileFeatures());
+
+  // Warm the panel-style cache so the first middle-click uses the persisted
+  // choice (defaults to the arcade console until storage resolves).
+  void getPanelStyle().catch(() => {
+    /* console default already applied via getCachedPanelStyle */
+  });
 
   onEnabledChanged(applyEnabled);
 }

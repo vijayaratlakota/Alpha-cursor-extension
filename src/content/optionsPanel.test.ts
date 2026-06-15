@@ -46,6 +46,10 @@ vi.mock("../shared/settings", () => ({
   getCachedTheme: () => ({ mode: "light", background: "mint" }),
   getTheme: () => Promise.resolve({ mode: "light", background: "mint" }),
   onThemeChanged: () => () => {},
+  // Panel-style gate: force the radial panel so these tests target it directly.
+  getCachedPanelStyle: () => "radial",
+  getPanelStyle: () => Promise.resolve("radial"),
+  onPanelStyleChanged: () => () => {},
 }));
 
 // ===========================================================================

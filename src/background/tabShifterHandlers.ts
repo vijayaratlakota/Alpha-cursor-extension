@@ -86,16 +86,45 @@ export async function handleTabsListLight(): Promise<LightTab[]> {
       id: tab.id,
       title: tab.title ?? "",
     };
-    // Only attach `favIconUrl` when present so the panel renders the Notion
-    // placeholder otherwise (Req 17.5). Under `exactOptionalPropertyTypes` an
-    // optional property must be omitted rather than set to `undefined`, so the
-    // narrowing must flow directly into the assignment.
-    if (typeof tab.favIconUrl === "string" && tab.favIconUrl.trim() !== "") {
+    // Prefer Chrome's `_favicon` API (derived from the page URL) for http(s)
+    // tabs: it returns the same COLORED favicon Chrome shows in the tab strip
+    // and, being an extension resource, renders reliably inside the content
+    // script's shadow DOM regardless of the host page's `img-src` CSP — which
+    // otherwise blocks cross-origin favicon URLs and leaves empty boxes. Fall
+    // back to the tab's own `favIconUrl` only when no `_favicon` can be built
+    // (e.g. chrome:// pages); otherwise the panel renders a lettered
+    // placeholder (Req 17.3, 17.5).
+    const derived = faviconUrlForPage(tab.url);
+    if (derived) {
+      light.favIconUrl = derived;
+    } else if (typeof tab.favIconUrl === "string" && tab.favIconUrl.trim() !== "") {
       light.favIconUrl = tab.favIconUrl;
     }
     result.push(light);
   }
   return result;
+}
+
+/**
+ * Build a Chrome `_favicon` URL for a page, used when a tab reports no
+ * `favIconUrl`. Returns `undefined` for missing or non-http(s) URLs (e.g.
+ * `chrome://`, `about:`) where no favicon is meaningful, so the panel renders
+ * its lettered placeholder instead (Req 17.5).
+ */
+function faviconUrlForPage(pageUrl: string | undefined): string | undefined {
+  if (!pageUrl) return undefined;
+  if (!/^https?:\/\//i.test(pageUrl)) return undefined;
+  const getURL = (chrome as { runtime?: { getURL?: (p: string) => string } })
+    .runtime?.getURL;
+  if (typeof getURL !== "function") return undefined;
+  try {
+    const url = new URL(getURL("/_favicon/"));
+    url.searchParams.set("pageUrl", pageUrl);
+    url.searchParams.set("size", "32");
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 /**

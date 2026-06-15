@@ -304,10 +304,174 @@
     color: #1a2e22;
   }
 
+  /* ── DARK MODE popup console ─────────────────────────────────────────
+   * The popup applies data-acx-theme="dark" on <html>. The console body + CRT
+   * screen go dark slate with WHITE borders for clarity; text flips light.
+   * Button fill colors are intentionally left unchanged. */
+  [data-acx-theme="dark"] .acx-popup-body {
+    background-color: #14171f;
+  }
+  [data-acx-theme="dark"] .acx-arcade-console {
+    background-color: #20252f;
+    color: #f4f6fa;
+    border-color: #5a6473;
+    box-shadow: rgba(0, 0, 0, 0.55) 6px 6px 0px 0px;
+  }
+  [data-acx-theme="dark"] .acx-arcade-console .text-ink,
+  [data-acx-theme="dark"] .acx-arcade-console h1,
+  [data-acx-theme="dark"] .acx-arcade-console h2 {
+    color: #f4f6fa;
+  }
+  [data-acx-theme="dark"] .acx-arcade-screen {
+    background-color: #0a140d;
+    color: #7cffb0;
+    border-color: #5a6473;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(124, 255, 176, 0.07) 0px,
+      rgba(124, 255, 176, 0.07) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+  [data-acx-theme="dark"] .acx-arcade-screen .text-ink-faint,
+  [data-acx-theme="dark"] .acx-arcade-screen .text-ink-muted,
+  [data-acx-theme="dark"] .acx-arcade-screen .text-ink-secondary {
+    color: #5fbf85;
+  }
+
+  /* Popup heading + notepad/saved-tab rows that sit on the CRT screen.
+   * Themeable so they flip with light/dark; button fills stay untouched. */
+  .acx-pop-ink { color: #0a0118; }
+  .acx-pop-screen-row {
+    background: rgba(255, 255, 255, 0.7);
+    border: 2px solid #0a0118;
+    color: #1a2e22;
+  }
+  .acx-pop-screen-name { color: #1a2e22; }
+  .acx-pop-screen-meta { color: #4a6357; }
+  [data-acx-theme="dark"] .acx-pop-ink { color: #f4f6fa; }
+  [data-acx-theme="dark"] .acx-pop-screen-row {
+    background: rgba(124, 255, 176, 0.08);
+    border-color: #2f5e43;
+    color: #b9ffd4;
+  }
+  [data-acx-theme="dark"] .acx-pop-screen-name { color: #b9ffd4; }
+  [data-acx-theme="dark"] .acx-pop-screen-meta { color: #5fbf85; }
+  /* Popup structural borders + toggle row surfaces in dark mode → soft hairline
+   * (button fills untouched). */
+  [data-acx-theme="dark"] .acx-arcade-console .bg-white { background-color: #29303c !important; }
+  [data-acx-theme="dark"] .acx-arcade-console .border-\[\#0a0118\] { border-color: #5a6473 !important; }
+
   .acx-glass {
-    background-color: var(--acx-color-surface);
-    border: 2px solid var(--acx-color-hairline);
-    box-shadow: var(--acx-shadow-elevated);
+    /* Console-style dialog surface: a SOLID white card with a thick dark
+     * border + hard offset shadow, matching the arcade console. The token
+     * variables are redefined here so every descendant that uses token-backed
+     * utilities (text-ink, border-hairline(-strong), bg-surface, placeholders,
+     * shadows) resolves to the crisp light console palette — giving clear text
+     * and clear borders regardless of the host surface's pinned dark theme. */
+    --acx-color-surface: #ffffff;
+    --acx-color-canvas: #ffffff;
+    --acx-color-canvas-soft: #ffffff;
+    --acx-color-ink: #0a0118;
+    --acx-color-ink-secondary: #2c1d55;
+    --acx-color-ink-muted: #4a3f6b;
+    --acx-color-ink-faint: #6b5b95;
+    --acx-color-hairline: #0a0118;
+    --acx-color-hairline-strong: #0a0118;
+    --acx-shadow-soft: #0a0118 3px 3px 0px 0px;
+    --acx-shadow-elevated: #0a0118 6px 6px 0px 0px;
+    background-color: #ffffff;
+    color: #0a0118;
+    border: 4px solid #0a0118;
+    border-radius: 16px;
+    box-shadow: #0a0118 6px 6px 0px 0px;
+  }
+  /* Inside a console dialog, give text fields a clearly visible bordered
+   * "screen" so it's obvious where to type. */
+  .acx-glass input[type="text"],
+  .acx-glass input:not([type]),
+  .acx-glass textarea {
+    border-width: 2px;
+    border-color: #0a0118;
+    background-color: #ffffff;
+    color: #0a0118;
+  }
+  /* Force a clear, thick dark border on EVERY button inside a console dialog
+   * (Cancel / Save / Stop / close / format choices, …) so each is obviously a
+   * distinct clickable control regardless of its fill color. */
+  .acx-glass button {
+    border: 3px solid #0a0118 !important;
+  }
+  /* The voice "Listening…" transcript area + any read-only status panel reads
+   * as a retro CRT screen: a mint-green bordered box with subtle scanlines,
+   * matching the arcade console. Dark ink keeps the dictated text crisp. */
+  .acx-glass .acx-screen {
+    box-sizing: border-box;
+    border: 3px solid #0a0118;
+    border-radius: 10px;
+    background-color: #bff0d0;
+    color: #1a2e22;
+    padding: 10px 12px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(10, 1, 24, 0.12) 0px,
+      rgba(10, 1, 24, 0.12) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  /* ── DARK MODE dialogs ───────────────────────────────────────────────
+   * When the surface is pinned to dark, the console dialog card becomes a warm
+   * charcoal card with refined hairline borders; text + token-backed children
+   * flip to the light palette. The CRT screen becomes phosphor green. Button
+   * FILL colors are left unchanged. */
+  [data-acx-theme="dark"] .acx-glass,
+  :host([data-acx-theme="dark"]) .acx-glass {
+    --acx-color-surface: #20252f;
+    --acx-color-canvas: #20252f;
+    --acx-color-canvas-soft: #29303c;
+    --acx-color-ink: #f4f6fa;
+    --acx-color-ink-secondary: #cfd6e2;
+    --acx-color-ink-muted: #97a1b2;
+    --acx-color-ink-faint: #69727f;
+    --acx-color-hairline: #5a6473;
+    --acx-color-hairline-strong: #5a6473;
+    --acx-shadow-soft: rgba(0, 0, 0, 0.55) 3px 3px 0px 0px;
+    --acx-shadow-elevated: rgba(0, 0, 0, 0.6) 6px 6px 0px 0px;
+    background-color: #20252f;
+    color: #f4f6fa;
+    border-color: #5a6473;
+    box-shadow: rgba(0, 0, 0, 0.6) 6px 6px 0px 0px;
+  }
+  [data-acx-theme="dark"] .acx-glass input[type="text"],
+  [data-acx-theme="dark"] .acx-glass input:not([type]),
+  [data-acx-theme="dark"] .acx-glass textarea,
+  :host([data-acx-theme="dark"]) .acx-glass input[type="text"],
+  :host([data-acx-theme="dark"]) .acx-glass input:not([type]),
+  :host([data-acx-theme="dark"]) .acx-glass textarea {
+    border-color: #5a6473;
+    background-color: #0a140d;
+    color: #7cffb0;
+  }
+  [data-acx-theme="dark"] .acx-glass button,
+  :host([data-acx-theme="dark"]) .acx-glass button {
+    border-color: #5a6473 !important;
+  }
+  /* Dark CRT screen: deep phosphor-green terminal with soft scanlines. */
+  [data-acx-theme="dark"] .acx-glass .acx-screen,
+  :host([data-acx-theme="dark"]) .acx-glass .acx-screen {
+    border-color: #5a6473;
+    background-color: #0a140d;
+    color: #7cffb0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(124, 255, 176, 0.07) 0px,
+      rgba(124, 255, 176, 0.07) 1px,
+      transparent 1px,
+      transparent 3px
+    );
   }
 
   /* Popup window body: paint it the same white as the console and drop the

@@ -646,10 +646,10 @@ export const THEME_BACKGROUNDS: {
   { id: "coral", label: "Coral", swatch: "#ff5555" },
 ];
 
-/** Default theme: light mode on the mint arcade canvas. */
+/** Default theme: light mode on the indigo brand canvas. */
 export const DEFAULT_THEME: ThemePreference = {
   mode: "light",
-  background: "mint",
+  background: "indigo",
 };
 
 /** Profile-scoped key holding the {@link ThemePreference}: `…:settings:theme`. */
@@ -758,6 +758,117 @@ export function onThemeChanged(
         (change.newValue as Partial<ThemePreference> | undefined) ?? undefined,
       );
       cachedTheme = next;
+      cb(next);
+    }
+  };
+  storage.onChanged.addListener(listener);
+  return () => storage.onChanged.removeListener(listener);
+}
+
+// ---------------------------------------------------------------------------
+// Panel style preference (radial vs arcade console)
+// ---------------------------------------------------------------------------
+//
+// The middle-click Options_Panel can render in two styles:
+//   - "console" (default) — the retro arcade gaming-console: a framed screen
+//     that shows the hovered/selected tool's name, with the feature buttons
+//     below and keyboard up/down/enter navigation; sub-lists (e.g. saved tabs)
+//     render inside the same screen.
+//   - "radial" — the original radial wheel of circular icon buttons.
+//
+// Stored at `acx:{profileId}:settings:panelstyle` in `chrome.storage.sync`
+// (fallback `local`) and cached for synchronous use by the content script,
+// mirroring the Toggle / theme pattern.
+
+/** Middle-click panel rendering style. */
+export type PanelStyle = "console" | "radial";
+
+/** Default panel style: the arcade console. */
+export const DEFAULT_PANEL_STYLE: PanelStyle = "console";
+
+/** Profile-scoped key holding the {@link PanelStyle}: `…:settings:panelstyle`. */
+export function panelStyleKey(profileId: string): string {
+  return scopedKey(profileId, StorageDomain.SETTINGS, "panelstyle");
+}
+
+const PANEL_STYLE_KEY_SUFFIX = `${KEY_SEPARATOR}${StorageDomain.SETTINGS}${KEY_SEPARATOR}panelstyle`;
+
+/** True when `key` is an Alpha Cursor profile-scoped panel-style key. */
+function isPanelStyleKey(key: string): boolean {
+  return key.startsWith(KEY_PREFIX) && key.endsWith(PANEL_STYLE_KEY_SUFFIX);
+}
+
+/** Last known panel style, cached for synchronous content-script use. */
+let cachedPanelStyle: PanelStyle | null = null;
+
+/** Coerce a stored value into a valid {@link PanelStyle}. */
+function normalizePanelStyle(stored: unknown): PanelStyle {
+  return stored === "radial" ? "radial" : DEFAULT_PANEL_STYLE;
+}
+
+/**
+ * Synchronously return the last known panel style, defaulting to
+ * {@link DEFAULT_PANEL_STYLE} until a value has been loaded.
+ */
+export function getCachedPanelStyle(): PanelStyle {
+  return cachedPanelStyle ?? DEFAULT_PANEL_STYLE;
+}
+
+/** Read the panel style from sync, falling back to local. */
+async function readPanelStyleValue(key: string): Promise<unknown> {
+  try {
+    const fromSync = await getSync<PanelStyle>(key);
+    if (fromSync !== undefined && fromSync !== null) return fromSync;
+    return await getLocal<PanelStyle>(key);
+  } catch {
+    try {
+      return await getLocal<PanelStyle>(key);
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+/** Read the persisted panel style (console default), caching it. */
+export async function getPanelStyle(): Promise<PanelStyle> {
+  const profileId = await requireProfile();
+  const stored = await readPanelStyleValue(panelStyleKey(profileId));
+  const style = normalizePanelStyle(stored);
+  cachedPanelStyle = style;
+  return style;
+}
+
+/** Persist the panel style (non-blocking write, Req 19.3). */
+export async function setPanelStyle(style: PanelStyle): Promise<void> {
+  const profileId = await requireProfile();
+  const next = normalizePanelStyle(style);
+  cachedPanelStyle = next;
+  const key = panelStyleKey(profileId);
+  try {
+    await setSync<PanelStyle>(key, next);
+  } catch {
+    await setLocal<PanelStyle>(key, next);
+  }
+}
+
+/**
+ * Subscribe to panel-style changes across contexts. The cache is refreshed
+ * before `cb` fires. Returns an unsubscribe function.
+ */
+export function onPanelStyleChanged(cb: (style: PanelStyle) => void): () => void {
+  const storage = (globalThis as { chrome?: typeof chrome }).chrome?.storage;
+  if (!storage || !storage.onChanged) {
+    return () => {};
+  }
+  const listener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string,
+  ): void => {
+    if (areaName !== "sync" && areaName !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+      if (!isPanelStyleKey(key)) continue;
+      const next = normalizePanelStyle(change.newValue);
+      cachedPanelStyle = next;
       cb(next);
     }
   };

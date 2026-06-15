@@ -45,6 +45,9 @@ vi.mock("../shared/settings", () => ({
   getCachedTheme: () => ({ mode: "light", background: "mint" }),
   getTheme: () => Promise.resolve({ mode: "light", background: "mint" }),
   onThemeChanged: () => () => {},
+  getPanelStyle: () => Promise.resolve("console"),
+  getCachedPanelStyle: () => "console",
+  onPanelStyleChanged: () => () => {},
 }));
 
 // Cookie removal: no-op.

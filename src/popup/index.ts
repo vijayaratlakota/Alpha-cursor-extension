@@ -61,7 +61,7 @@ import {
  * popup never throws at the boundary.
  */
 function sendToBackground<T, R>(
-  type: NotepadMessageType,
+  type: NotepadMessageType | string,
   payload: T,
 ): Promise<Response<R>> {
   const message: Message<T> = createMessage(type, payload);
@@ -97,6 +97,39 @@ function normalizeResponse<R>(response: Response<R> | undefined): Response<R> {
     return response;
   }
   return errorResponse("Malformed background response");
+}
+
+// ---------------------------------------------------------------------------
+// Saved-tabs message contracts (mirror src/background/tabsHandlers.ts)
+// ---------------------------------------------------------------------------
+
+/** Message type strings shared with the background tab handlers. */
+const TabsMessageType = {
+  SAVE: "TABS_SAVE",
+  LIST: "TABS_LIST",
+  DELETE: "TABS_DELETE",
+  RESTORE: "TABS_RESTORE",
+} as const;
+
+interface TabsSavePayload {
+  name: string;
+  overwrite?: boolean;
+}
+
+type TabsSaveResult =
+  | { saved: true; folderId: string; name: string; savedCount: number }
+  | { saved: false; reason: "name_exists"; name: string };
+
+interface TabFolderSummary {
+  id: string;
+  name: string;
+  count: number;
+  savedAt: number;
+}
+
+interface TabsRestoreResult {
+  openedCount: number;
+  failedCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,8 +196,7 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
   const labelId = "acx-toggle-label";
   const title = document.createElement("span");
   title.id = labelId;
-  title.className = "text-body-sm font-sans";
-  title.style.color = "#0a0118";
+  title.className = "text-body-sm font-sans acx-pop-ink";
   title.textContent = "Alpha Cursor";
 
   const stateText = document.createElement("span");
@@ -277,6 +309,212 @@ function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): voi
 }
 
 // ---------------------------------------------------------------------------
+// Saved Tabs section (Req 7 & 8) — works on EVERY page via the popup
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the "Saved Tabs" section: a "Save tabs" action plus a live list of
+ * saved folders with Open / Delete controls. The popup is available on every
+ * page (including chrome:// and the New Tab page where content scripts are
+ * blocked), so save/restore works everywhere through the background worker.
+ */
+function createSavedTabsSection(status: {
+  show(text: string, kind?: "info" | "success" | "error"): void;
+}): HTMLElement {
+  const section = document.createElement("section");
+  section.className = "flex flex-col gap-sm";
+  section.setAttribute("aria-label", "Saved tabs");
+
+  const head = document.createElement("div");
+  head.className = "flex items-center justify-between gap-sm";
+
+  const titleEl = document.createElement("h2");
+  titleEl.className = "m-0 text-body-md font-sans text-ink";
+  titleEl.textContent = "Saved Tabs";
+
+  const saveBtn = createButton({
+    variant: "secondary",
+    label: "Save tabs",
+    ariaLabel: "Save all tabs in the current window",
+    className: "text-body-sm px-md py-xxs whitespace-nowrap",
+    onClick: () => {
+      void runSaveTabs();
+    },
+  });
+  saveBtn.style.backgroundColor = "#4503ff";
+  saveBtn.style.color = "#ffffff";
+
+  head.append(titleEl, saveBtn);
+
+  const listContainer = document.createElement("div");
+  section.append(head, listContainer);
+
+  /** Render the saved-folder list (or an empty state) inside the CRT screen. */
+  function renderFolders(folders: TabFolderSummary[]): void {
+    listContainer.replaceChildren();
+
+    if (folders.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = joinClasses(
+        "flex items-center justify-center text-center",
+        "acx-arcade-screen px-md py-md text-caption font-sans",
+      );
+      empty.textContent = "No saved tab groups yet. Save the current window's tabs.";
+      listContainer.appendChild(empty);
+      return;
+    }
+
+    const screen = document.createElement("div");
+    screen.className = "acx-arcade-screen p-sm";
+
+    const list = document.createElement("ul");
+    list.className = joinClasses(
+      "m-0 p-0 list-none flex flex-col gap-xs",
+      "max-h-[200px] overflow-y-auto pr-xxs",
+    );
+
+    for (const folder of folders) {
+      const item = document.createElement("li");
+      item.className = joinClasses(
+        "flex items-center gap-sm",
+        "rounded-sm bg-white/70 border-2 border-[#0a0118] px-sm py-xs",
+      );
+
+      const info = document.createElement("div");
+      info.className = "flex flex-col min-w-0 grow";
+      const name = document.createElement("span");
+      name.className = "text-body-sm font-sans truncate";
+      name.style.color = "#1a2e22";
+      name.textContent = folder.name;
+      const meta = document.createElement("span");
+      meta.className = "text-caption font-sans";
+      meta.style.color = "#4a6357";
+      meta.textContent = `${folder.count} tab${folder.count === 1 ? "" : "s"}`;
+      info.append(name, meta);
+
+      const openBtn = createButton({
+        variant: "secondary",
+        label: "Open",
+        ariaLabel: `Open all tabs in ${folder.name}`,
+        className: "text-caption px-sm py-xxs whitespace-nowrap",
+        onClick: () => {
+          void runRestore(folder.id, folder.name);
+        },
+      });
+      openBtn.style.backgroundColor = "#9747ff";
+      openBtn.style.color = "#ffffff";
+
+      const deleteBtn = createButton({
+        variant: "secondary",
+        label: "✕",
+        ariaLabel: `Delete ${folder.name}`,
+        className: "text-caption px-sm py-xxs",
+        onClick: () => {
+          void runDelete(folder.id, folder.name);
+        },
+      });
+      deleteBtn.style.backgroundColor = "#ff5555";
+      deleteBtn.style.color = "#ffffff";
+
+      const controls = document.createElement("div");
+      controls.className = "flex items-center gap-xs shrink-0";
+      controls.append(openBtn, deleteBtn);
+
+      item.append(info, controls);
+      list.appendChild(item);
+    }
+
+    screen.appendChild(list);
+    listContainer.appendChild(screen);
+  }
+
+  /** Re-fetch and re-render the saved-folder list. */
+  async function refresh(): Promise<void> {
+    const response = await sendToBackground<undefined, TabFolderSummary[]>(
+      TabsMessageType.LIST,
+      undefined,
+    );
+    if (isOk(response) && Array.isArray(response.data)) {
+      renderFolders(response.data);
+    } else {
+      renderFolders([]);
+    }
+  }
+
+  /** Save the current window's tabs, prompting for a name (+ overwrite flow). */
+  async function runSaveTabs(): Promise<void> {
+    const name = window.prompt("Name this tab group:");
+    if (name === null) return; // cancelled
+    await saveWithName(name.trim(), false);
+  }
+
+  async function saveWithName(name: string, overwrite: boolean): Promise<void> {
+    if (!name) {
+      status.show("Enter a name for the tab group.", "error");
+      return;
+    }
+    const response = await sendToBackground<TabsSavePayload, TabsSaveResult>(
+      TabsMessageType.SAVE,
+      { name, overwrite },
+    );
+    if (!isOk(response)) {
+      status.show(response.error?.message ?? "Could not save tabs.", "error");
+      return;
+    }
+    const result = response.data;
+    if (result.saved === false && result.reason === "name_exists") {
+      const replace = window.confirm(
+        `A group named "${result.name}" already exists. Replace it?`,
+      );
+      if (replace) {
+        await saveWithName(name, true);
+      }
+      return;
+    }
+    if (result.saved === true) {
+      status.show(`Saved ${result.savedCount} tabs to "${result.name}".`, "success");
+      void refresh();
+    }
+  }
+
+  /** Restore (open) a saved folder. */
+  async function runRestore(folderId: string, folderName: string): Promise<void> {
+    const response = await sendToBackground<{ folderId: string }, TabsRestoreResult>(
+      TabsMessageType.RESTORE,
+      { folderId },
+    );
+    if (!isOk(response)) {
+      status.show(response.error?.message ?? "Could not open tabs.", "error");
+      return;
+    }
+    const { openedCount, failedCount } = response.data;
+    const failNote = failedCount > 0 ? ` (${failedCount} failed)` : "";
+    status.show(`Opened ${openedCount} tabs from "${folderName}".${failNote}`, "success");
+  }
+
+  /** Delete a saved folder (with confirmation). */
+  async function runDelete(folderId: string, folderName: string): Promise<void> {
+    const ok = window.confirm(`Delete the saved group "${folderName}"?`);
+    if (!ok) return;
+    const response = await sendToBackground<{ folderId: string }, { deleted: boolean }>(
+      TabsMessageType.DELETE,
+      { folderId },
+    );
+    if (!isOk(response)) {
+      status.show(response.error?.message ?? "Could not delete the group.", "error");
+      return;
+    }
+    status.show(`Deleted "${folderName}".`, "success");
+    void refresh();
+  }
+
+  // Initial load.
+  void refresh();
+
+  return section;
+}
+
+// ---------------------------------------------------------------------------
 // Mount
 // ---------------------------------------------------------------------------
 
@@ -356,6 +594,9 @@ function mountPopup(root: HTMLElement): void {
 
   section.append(sectionHead, listContainer, status.el);
 
+  // ── Saved Tabs section (works on every page via the popup) ───────────
+  const savedTabsSection = createSavedTabsSection(status);
+
   // ── Footer: open full Options page (Req 19.1) ────────────────────────
   const footer = document.createElement("footer");
   footer.className = "flex items-center justify-end pt-xs border-t-2 border-[#0a0118]";
@@ -376,7 +617,7 @@ function mountPopup(root: HTMLElement): void {
   optionsBtn.style.color = "#ffffff";
   footer.appendChild(optionsBtn);
 
-  root.append(header, toggle.el, section, footer);
+  root.append(header, toggle.el, section, savedTabsSection, footer);
 
   // ── Wire up live data ────────────────────────────────────────────────
 

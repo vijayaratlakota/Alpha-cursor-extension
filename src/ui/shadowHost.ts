@@ -269,10 +269,10 @@ export function createShadowHost(
         : (cb: FrameRequestCallback) => setTimeout(() => cb(0), 0);
     raf(() => {
       if (destroyed) return;
-      const content =
-        host.firstElementChild instanceof HTMLElement
-          ? host.firstElementChild
-          : null;
+      // The mounted content lives in the CLOSED shadow root, not the host's
+      // light DOM, so measure `mounted` directly (host.firstElementChild is
+      // always null here).
+      const content = mounted instanceof HTMLElement ? mounted : null;
       const rect = content?.getBoundingClientRect();
       const w = rect?.width ?? 0;
       const h = rect?.height ?? 0;
@@ -295,6 +295,26 @@ export function createShadowHost(
       host.style.left = `${clampedLeft}px`;
       host.style.top = `${clampedTop}px`;
     });
+  }
+
+  /** The ResizeObserver watching the current mounted content, if any. */
+  let resizeObserver: ResizeObserver | null = null;
+
+  /**
+   * Watch the mounted content for size changes and re-clamp into the viewport
+   * whenever it grows/shrinks (lists loading, transcripts expanding, etc.), so
+   * an anchored panel that changes size after mount stays fully on-screen.
+   */
+  function observeContentResize(node: Node): void {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    if (typeof ResizeObserver === "undefined") return;
+    if (!(node instanceof HTMLElement)) return;
+    resizeObserver = new ResizeObserver(() => {
+      if (destroyed) return;
+      clampIntoViewport();
+    });
+    resizeObserver.observe(node);
   }
 
   const handle: ShadowHostHandle = {
@@ -322,10 +342,16 @@ export function createShadowHost(
       // caller re-implementing clamping.
       if (overlay === "anchored") {
         clampIntoViewport();
+        // Re-clamp whenever the mounted content RESIZES (e.g. the tab-shifter
+        // list loads, the voice transcript grows, a sub-list expands) so a
+        // panel that grows after mount never spills out of the viewport.
+        observeContentResize(node);
       }
       return node;
     },
     unmount(): void {
+      resizeObserver?.disconnect();
+      resizeObserver = null;
       if (mounted && mounted.parentNode === root) {
         root.removeChild(mounted);
       }

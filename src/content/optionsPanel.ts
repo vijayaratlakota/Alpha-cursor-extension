@@ -26,9 +26,10 @@
 import { createShadowHost, type ShadowHostHandle } from "../ui/shadowHost";
 import { joinClasses } from "../ui/primitives/classNames";
 import { createToolIcon } from "../ui/icons";
-import { getCachedEnabled } from "../shared/settings";
+import { getCachedEnabled, getCachedPanelStyle } from "../shared/settings";
 import { resolveContext, type ContextType } from "./context";
 import { resolveToolSet, type Tool, type ToolInvocation } from "./tools";
+import { openConsolePanel, closeConsolePanel } from "./consolePanel";
 
 /** A 2-D size in CSS pixels. */
 export interface PanelSize {
@@ -432,7 +433,13 @@ export function attachPanelTrigger(
     event.preventDefault();
     event.stopPropagation();
     const context = resolveContext(event);
-    openPanel(context, { x: event.clientX, y: event.clientY });
+    const point = { x: event.clientX, y: event.clientY };
+    // Dispatch to the user's chosen panel style (console is the default).
+    if (getCachedPanelStyle() === "radial") {
+      openPanel(context, point);
+    } else {
+      openConsolePanel(context, point);
+    }
   };
 
   const onAuxClick = (event: MouseEvent): void => {
@@ -449,5 +456,6 @@ export function attachPanelTrigger(
     target.removeEventListener("mousedown", onMouseDown as EventListener, true);
     target.removeEventListener("auxclick", onAuxClick as EventListener, true);
     closePanel();
+    closeConsolePanel();
   };
 }

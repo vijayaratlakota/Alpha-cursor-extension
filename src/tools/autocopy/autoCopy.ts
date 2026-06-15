@@ -207,6 +207,20 @@ function addPersistentHighlight(range: Range): void {
   }
 }
 
+/**
+ * Remove a single previously-added range from the persistent highlight (used
+ * when the user undoes the last auto-copy, so its green highlight clears too).
+ * No-op when the API is unsupported or the range is not present.
+ */
+function removePersistentHighlight(range: Range): void {
+  if (!persistHighlight) return;
+  try {
+    persistHighlight.delete(range);
+  } catch {
+    /* range not in the set / unsupported — ignore */
+  }
+}
+
 /** Clear every persistent copied-text highlight (used on feature teardown). */
 function clearPersistentHighlights(): void {
   if (typeof CSS !== "undefined" && "highlights" in CSS) {
@@ -231,6 +245,8 @@ export function initAutoCopy(target: Document = document): DetachAutoCopy {
   let startY = 0;
   /** Id of the most recent Notepad entry added by auto-copy (for undo). */
   let lastAppendedId: string | null = null;
+  /** The range of the most recent persistent highlight (cleared on undo). */
+  let lastHighlightRange: Range | null = null;
 
   installSelectionStyle();
 
@@ -265,7 +281,9 @@ export function initAutoCopy(target: Document = document): DetachAutoCopy {
       ).getSelection?.();
       if (selection && selection.rangeCount > 0) {
         try {
-          addPersistentHighlight(selection.getRangeAt(0).cloneRange());
+          const cloned = selection.getRangeAt(0).cloneRange();
+          addPersistentHighlight(cloned);
+          lastHighlightRange = cloned;
         } catch {
           /* ignore an unusable range */
         }
@@ -345,6 +363,23 @@ export function initAutoCopy(target: Document = document): DetachAutoCopy {
     event.stopPropagation();
     const id = lastAppendedId;
     lastAppendedId = null;
+
+    // Also clear the persistent green highlight left over that capture, and
+    // collapse any lingering live selection, so undo fully reverts the visual
+    // state — not just the notepad entry.
+    if (lastHighlightRange) {
+      removePersistentHighlight(lastHighlightRange);
+      lastHighlightRange = null;
+    }
+    const selection = (
+      globalThis as { getSelection?: () => Selection | null }
+    ).getSelection?.();
+    try {
+      selection?.removeAllRanges();
+    } catch {
+      /* ignore */
+    }
+
     void sendToBackground<NotepadRemovePayload, NotepadRemoveResult>(
       NotepadMessageType.REMOVE,
       { id },

@@ -51,12 +51,13 @@ describe("MV3 manifest validity (Req 22.1)", () => {
 });
 
 describe("minimal permission declaration (Req 21.1)", () => {
-  it("declares exactly the storage/tabs/downloads/offscreen permissions", () => {
+  it("declares exactly the storage/tabs/downloads/offscreen/favicon permissions", () => {
     expect(m.permissions).toEqual([
       "storage",
       "tabs",
       "downloads",
       "offscreen",
+      "favicon",
     ]);
   });
 
