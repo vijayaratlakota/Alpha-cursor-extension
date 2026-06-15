@@ -31,6 +31,7 @@ import "../ui/styles/tailwind.css";
 
 import { createButton } from "../ui/primitives/button";
 import { joinClasses } from "../ui/primitives/classNames";
+import { applyThemeToDocument } from "../ui/applyTheme";
 import {
   getEnabled,
   getCachedEnabled,
@@ -153,7 +154,7 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
   const row = document.createElement("div");
   row.className = joinClasses(
     "flex items-center justify-between gap-md",
-    "px-md py-sm rounded-md bg-surface border border-hairline",
+    "px-md py-sm rounded-lg bg-white border-2 border-[#0a0118]",
   );
 
   const labelWrap = document.createElement("div");
@@ -162,11 +163,13 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
   const labelId = "acx-toggle-label";
   const title = document.createElement("span");
   title.id = labelId;
-  title.className = "text-body-sm font-sans text-ink";
+  title.className = "text-body-sm font-sans";
+  title.style.color = "#0a0118";
   title.textContent = "Alpha Cursor";
 
   const stateText = document.createElement("span");
-  stateText.className = "text-caption font-sans text-ink-muted";
+  stateText.className = "text-caption font-sans";
+  stateText.style.color = "#4a3f6b";
 
   labelWrap.append(title, stateText);
 
@@ -177,7 +180,7 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
   sw.setAttribute("aria-labelledby", labelId);
   sw.className = joinClasses(
     "relative inline-flex items-center shrink-0 cursor-pointer",
-    "w-[44px] h-[24px] rounded-full border-0 p-0",
+    "w-[46px] h-[26px] rounded-full border-2 border-[#0a0118] p-0",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
     "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
   );
@@ -185,7 +188,7 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
   const knob = document.createElement("span");
   knob.setAttribute("aria-hidden", "true");
   knob.className = joinClasses(
-    "absolute top-[2px] left-[2px] size-[20px] rounded-full bg-surface shadow-soft",
+    "absolute top-[1px] left-[1px] size-[20px] rounded-full bg-white border-2 border-[#0a0118]",
     "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
   );
   sw.appendChild(knob);
@@ -196,11 +199,12 @@ function createToggle(onChange: (enabled: boolean) => void): ToggleHandle {
 
   const paint = (enabled: boolean): void => {
     sw.setAttribute("aria-checked", String(enabled));
-    // Track color: reserved primary blue when ON, neutral canvas-soft when OFF.
+    // Track color: reserved primary when ON, neutral grey when OFF. Fixed
+    // colors so the console reads the same on every background theme.
     sw.style.backgroundColor = enabled
       ? "var(--acx-color-primary)"
-      : "var(--acx-color-hairline)";
-    knob.style.transform = enabled ? "translateX(20px)" : "translateX(0)";
+      : "#c9c2dd";
+    knob.style.transform = enabled ? "translateX(18px)" : "translateX(0)";
     stateText.textContent = enabled ? "On" : "Off";
   };
 
@@ -235,13 +239,16 @@ function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): voi
     const empty = document.createElement("div");
     empty.className = joinClasses(
       "flex items-center justify-center text-center",
-      "rounded-lg bg-canvas-soft px-md py-lg",
-      "text-caption font-sans text-ink-faint",
+      "acx-arcade-screen px-md py-lg",
+      "text-caption font-sans",
     );
     empty.textContent = "No copied text yet. Copies are saved here automatically.";
     container.appendChild(empty);
     return;
   }
+
+  const screen = document.createElement("div");
+  screen.className = "acx-arcade-screen p-sm";
 
   const list = document.createElement("ul");
   list.className = joinClasses(
@@ -256,15 +263,17 @@ function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): voi
     item.className = joinClasses(
       // Show the FULL copied text (wrapped). No per-entry scrollbar — the
       // single list scroller above lets the user scroll through everything.
-      "text-body-sm font-sans text-ink-secondary whitespace-pre-wrap break-words",
-      "px-sm py-xs rounded-sm bg-surface border border-hairline",
+      "text-body-sm font-sans whitespace-pre-wrap break-words",
+      "px-sm py-xs rounded-sm bg-white/70 border-2 border-[#0a0118]",
     );
+    item.style.color = "#1a2e22";
     const text = entry.text.trim();
     item.textContent = text.length > 0 ? text : "(empty)";
     list.appendChild(item);
   }
 
-  container.appendChild(list);
+  screen.appendChild(list);
+  container.appendChild(screen);
 }
 
 // ---------------------------------------------------------------------------
@@ -273,10 +282,13 @@ function renderNotepadList(container: HTMLElement, entries: NotepadEntry[]): voi
 
 /** Build and mount the full popup UI into `root`. */
 function mountPopup(root: HTMLElement): void {
-  // Constrain popup width (~320px) and set the warm Notion canvas.
+  // The whole popup is a white retro gaming console (fixed colors so it looks
+  // identical for every selected background color). No outer margin — the body
+  // is painted the same white so the window's square corners vanish behind the
+  // single rounded console frame.
   root.className = joinClasses(
     "w-[320px] box-border flex flex-col gap-md",
-    "bg-canvas-soft text-ink font-sans p-md",
+    "font-sans p-md acx-arcade-console",
   );
 
   // ── Header / wordmark ────────────────────────────────────────────────
@@ -308,25 +320,30 @@ function mountPopup(root: HTMLElement): void {
   const status = createStatusRegion();
 
   const copyAllBtn = createButton({
-    variant: "utility",
+    variant: "secondary",
     label: "Copy All",
     ariaLabel: "Copy all notepad entries",
+    className: "text-body-sm px-md py-xxs whitespace-nowrap",
     onClick: () => {
       void runCopyAll();
     },
   });
+  // Brand fill: violet with white label.
+  copyAllBtn.style.backgroundColor = "#9747ff";
+  copyAllBtn.style.color = "#ffffff";
 
   const clearAllBtn = createButton({
-    variant: "utility",
+    variant: "secondary",
     label: "Clear All",
     ariaLabel: "Clear all notepad entries",
+    className: "text-body-sm px-md py-xxs whitespace-nowrap",
     onClick: () => {
       void runClearAll();
     },
   });
-  // Mark the destructive action with the negative ink (keeps the green accent
-  // reserved for primary actions).
-  clearAllBtn.style.color = "var(--acx-color-negative)";
+  // Brand fill: coral red with white label (the destructive action).
+  clearAllBtn.style.backgroundColor = "#ff5555";
+  clearAllBtn.style.color = "#ffffff";
 
   const headActions = document.createElement("div");
   headActions.className = "flex items-center gap-sm";
@@ -341,18 +358,22 @@ function mountPopup(root: HTMLElement): void {
 
   // ── Footer: open full Options page (Req 19.1) ────────────────────────
   const footer = document.createElement("footer");
-  footer.className = "flex items-center justify-end pt-xs border-t border-hairline";
+  footer.className = "flex items-center justify-end pt-xs border-t-2 border-[#0a0118]";
 
   const optionsBtn = createButton({
-    variant: "utility",
+    variant: "secondary",
     label: "Open Settings",
     ariaLabel: "Open the full settings page",
+    className: "text-body-sm px-md py-xxs whitespace-nowrap",
     onClick: () => {
       if (chrome.runtime.openOptionsPage) {
         chrome.runtime.openOptionsPage();
       }
     },
   });
+  // Brand fill: indigo with white label.
+  optionsBtn.style.backgroundColor = "#4503ff";
+  optionsBtn.style.color = "#ffffff";
   footer.appendChild(optionsBtn);
 
   root.append(header, toggle.el, section, footer);
@@ -437,6 +458,7 @@ function mountPopup(root: HTMLElement): void {
 
 const appRoot = document.getElementById("app");
 if (appRoot) {
+  applyThemeToDocument();
   mountPopup(appRoot);
 }
 

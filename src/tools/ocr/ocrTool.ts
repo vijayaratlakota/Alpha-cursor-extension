@@ -190,7 +190,7 @@ function selectRegion(): Promise<SelectionOutcome> {
     const box = document.createElement("div");
     box.className = joinClasses(
       "absolute box-border rounded-sm pointer-events-none hidden",
-      "border-2 border-primary bg-[rgba(35,131,226,0.12)]",
+      "border-2 border-hairline bg-[rgba(255,217,19,0.25)]",
     );
     catcher.appendChild(box);
 

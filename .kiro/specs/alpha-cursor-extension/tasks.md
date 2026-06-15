@@ -284,6 +284,16 @@ Property test tagging format (used in every PBT sub-task):
   - [ ]* 29.4 Write unit/snapshot tests for light-theme pinning on the host, icon rendering per tool, and tooltip show/hide on hover and focus
     - _Requirements: 2.11, 2.12, 2.13, 20.8_
 
+- [x] 30. Retro / neo-brutalist re-skin ("Create Next App" design system)
+  - [x] 30.1 Replace the design tokens (`tokens.css` + `tailwind.css` `@theme`) with the retro palette (black canvas, yellow primary, lilac borders, white/lilac ink), VT323 typography scale, 8px spacing, squared radii, and HARD-OFFSET (no-blur) shadows
+    - _Requirements: 20.2, 20.3, 20.8_
+  - [x] 30.2 Bundle the VT323 font locally under `public/fonts/`, declare `@font-face`, expose it via `web_accessible_resources`, and rewrite `url(/fonts/…)` to an absolute extension URL for Shadow-DOM surfaces (no remote code)
+    - _Requirements: 20.4, 22.2_
+  - [x] 30.3 Re-skin the surfaces with hardcoded colors (radial Options_Panel, toast, tab shifter, favicon placeholder, screenshot progress badge, drag-copy selection highlight) to the retro palette + hard-offset shadows + stepped animations
+    - _Requirements: 2.11, 2.12, 20.6, 20.8_
+  - [x] 30.4 Update the design-token tests and component snapshots for the retro values
+    - _Requirements: 20.2, 20.4_
+
 ## Notes
 
 - Tasks marked with `*` are optional test sub-tasks and can be skipped for a faster MVP.
@@ -312,7 +322,8 @@ Property test tagging format (used in every PBT sub-task):
     { "id": 12, "tasks": ["24.1", "25.1", "25.2", "26.1", "26.2"] },
     { "id": 13, "tasks": ["24.2", "25.3", "26.3"] },
     { "id": 14, "tasks": ["26.4", "27.1"] },
-    { "id": 15, "tasks": ["29.1", "29.2", "29.3", "29.4"] }
+    { "id": 15, "tasks": ["29.1", "29.2", "29.3", "29.4"] },
+    { "id": 16, "tasks": ["30.1", "30.2", "30.3", "30.4"] }
   ]
 }
 ```

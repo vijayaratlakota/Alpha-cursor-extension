@@ -23,11 +23,24 @@
  * CSS and inline styles inside Shadow DOM roots. */
 @import "./tokens.css";
 
+/* VT323 retro pixel face, bundled locally under `public/fonts/` (no remote
+ * code, Req 22.2). The `@font-face` is declared here so it ships in the same
+ * compiled stylesheet that is injected into every Shadow DOM surface and the
+ * popup/options documents. `url()` is left to resolve against the extension
+ * origin; the font file is exposed via `web_accessible_resources`. */
+@font-face {
+  font-family: "VT323";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/vt323.woff2") format("woff2");
+}
+
 @theme {
   /* ── Fonts ──────────────────────────────────────────────────────── */
-  /* Inter stack; NotionInter is substituted by Inter per DESIGN.md. */
-  --font-sans: "Inter", -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
-    sans-serif;
+  /* VT323 retro pixel/monospace face; falls back to the platform monospace. */
+  --font-sans: "VT323", "Courier New", ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
 
   /* ── Colors ─────────────────────────────────────────────────────── */
   /* Structural accent — reserve `primary` for CTAs, links, and focus. */
@@ -84,66 +97,64 @@
   --color-accent-brown: var(--acx-color-accent-brown);
 
   /* ── Typography scale ───────────────────────────────────────────── */
-  /* Tailwind v4 pairs each `--text-{name}` with optional companion vars for
-   * line-height / letter-spacing / font-weight, so a single `text-{name}`
-   * utility carries the full type role from wise/DESIGN.md (weight 900 display,
-   * 700 headings, 600 strong/buttons). */
+  /* VT323 ships a single weight (400); hierarchy comes from SIZE, not weight.
+   * Sizes mirror tokens.css (the "Create Next App" retro scale). */
   --text-display-1: 64px;
-  --text-display-1--line-height: 1.02;
-  --text-display-1--letter-spacing: -1px;
-  --text-display-1--font-weight: 900;
+  --text-display-1--line-height: 1;
+  --text-display-1--letter-spacing: 0px;
+  --text-display-1--font-weight: 400;
 
-  --text-display-2: 47px;
-  --text-display-2--line-height: 1.05;
-  --text-display-2--letter-spacing: -0.5px;
-  --text-display-2--font-weight: 900;
+  --text-display-2: 48px;
+  --text-display-2--line-height: 1.02;
+  --text-display-2--letter-spacing: 0px;
+  --text-display-2--font-weight: 400;
 
-  --text-heading-1: 40px;
+  --text-heading-1: 36px;
   --text-heading-1--line-height: 1.05;
-  --text-heading-1--letter-spacing: -0.5px;
-  --text-heading-1--font-weight: 900;
+  --text-heading-1--letter-spacing: 0px;
+  --text-heading-1--font-weight: 400;
 
   --text-heading-2: 32px;
-  --text-heading-2--line-height: 1.2;
-  --text-heading-2--letter-spacing: -0.5px;
-  --text-heading-2--font-weight: 700;
+  --text-heading-2--line-height: 1.1;
+  --text-heading-2--letter-spacing: 0px;
+  --text-heading-2--font-weight: 400;
 
   --text-heading-3: 24px;
-  --text-heading-3--line-height: 1.3;
-  --text-heading-3--letter-spacing: -0.4px;
-  --text-heading-3--font-weight: 700;
+  --text-heading-3--line-height: 1.2;
+  --text-heading-3--letter-spacing: 0px;
+  --text-heading-3--font-weight: 400;
 
   --text-title: 20px;
-  --text-title--line-height: 1.4;
-  --text-title--letter-spacing: -0.2px;
-  --text-title--font-weight: 600;
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: 0px;
+  --text-title--font-weight: 400;
 
-  --text-body-md: 16px;
-  --text-body-md--line-height: 1.5;
-  --text-body-md--letter-spacing: 0;
+  --text-body-md: 18px;
+  --text-body-md--line-height: 1.35;
+  --text-body-md--letter-spacing: 0px;
   --text-body-md--font-weight: 400;
 
-  --text-body-sm: 14px;
-  --text-body-sm--line-height: 1.43;
-  --text-body-sm--letter-spacing: 0;
+  --text-body-sm: 16px;
+  --text-body-sm--line-height: 1.4;
+  --text-body-sm--letter-spacing: 0px;
   --text-body-sm--font-weight: 400;
 
-  --text-button: 16px;
-  --text-button--line-height: 1.5;
-  --text-button--letter-spacing: 0;
-  --text-button--font-weight: 600;
+  --text-button: 18px;
+  --text-button--line-height: 1.2;
+  --text-button--letter-spacing: 0.5px;
+  --text-button--font-weight: 400;
 
-  --text-caption: 12px;
-  --text-caption--line-height: 1.33;
-  --text-caption--letter-spacing: 0;
+  --text-caption: 16px;
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: 0px;
   --text-caption--font-weight: 400;
 
-  --text-eyebrow: 12px;
-  --text-eyebrow--line-height: 1.33;
-  --text-eyebrow--letter-spacing: 0.04em;
-  --text-eyebrow--font-weight: 600;
+  --text-eyebrow: 14px;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--letter-spacing: 0.08em;
+  --text-eyebrow--font-weight: 400;
 
-  /* ── Spacing scale (4px base — Wise) ────────────────────────────── */
+  /* ── Spacing scale (retro 8px base) ─────────────────────────────── */
   --spacing-xxs: 2px;
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -152,12 +163,12 @@
   --spacing-xl: 24px;
   --spacing-xxl: 32px;
 
-  /* ── Border radius scale (Wise — 24px canonical) ────────────────── */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* ── Border radius scale (squared / brutalist) ──────────────────── */
+  --radius-xs: 0px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
   --radius-full: 9999px;
 
   /* ── Elevation (barely-there layered shadows) ───────────────────── */
@@ -178,83 +189,153 @@
     background-color: var(--acx-color-canvas);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Light default; the dark override below flips native UI (scrollbars,
-     * form controls, the document chrome behind the popup) to match. */
+    /* Arcade theme is light; native UI (scrollbars, form controls) follows. */
     color-scheme: light;
   }
 
-  /* Match native UI to the active theme. */
-  @media (prefers-color-scheme: dark) {
-    :where(html, :host) {
-      color-scheme: dark;
-    }
-  }
-  :where([data-acx-theme="dark"]) {
-    color-scheme: dark;
-  }
+  /* The arcade theme is single-mode; forced overrides both resolve light. */
+  :where([data-acx-theme="dark"]),
   :where([data-acx-theme="light"]) {
     color-scheme: light;
   }
 
-  /* Document-rendered surfaces (popup / options pages) fill their viewport with
-   * the warm canvas so there is never a flash of the browser's default white
-   * behind the rounded cards in dark mode. */
+  /* Document-rendered surfaces (popup / options pages) get the mint canvas with
+   * subtle CRT scanlines for the arcade-screen feel. */
   :where(body) {
     margin: 0;
-    background-color: var(--acx-color-canvas);
     color: var(--acx-color-ink);
+    background-color: var(--acx-color-canvas);
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(10, 1, 24, 0.05) 0px,
+      rgba(10, 1, 24, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    );
   }
 }
 
-/* Premium dark-mode finish: a hairline-thin top edge highlight on elevated
- * surfaces (cards/menus/toasts) so they feel gently lit from above rather than
- * flat. A no-op in light mode where `--acx-edge-highlight` is transparent.
- * Apply with the `acx-elevated` class on any raised surface. */
+/* Brutalist surface treatments: bold outline + HARD OFFSET shadow (no blur).
+ * `acx-elevated` is the raised drop; `acx-glass` keeps the same name (used by
+ * dialogs/menus) but in this theme is a SOLID bordered surface (no blur) so it
+ * reads crisp on the black canvas. */
 @layer components {
   .acx-elevated {
-    box-shadow:
-      inset 0 1px 0 0 var(--acx-edge-highlight),
-      var(--acx-shadow-elevated);
+    box-shadow: var(--acx-shadow-elevated);
   }
 
-  /* Premium translucent "glass" surface for floating panels / dialogs / menus.
-   * Semi-transparent dark fill + backdrop blur + saturate so the page shows
-   * through subtly (the requested transparent look) while text stays legible.
-   * Falls back gracefully where backdrop-filter is unsupported (the rgba fill
-   * alone still reads as a solid-enough dark surface). */
-  .acx-glass {
-    background-color: color-mix(
-      in srgb,
-      var(--acx-color-surface) 82%,
-      transparent
+  /* Brutalist button interaction: a hard black offset shadow that the button
+   * "presses into" on click. `.acx-btn` carries the motion + active state;
+   * `.acx-btn-shadow` opts a variant into the offset drop (so a flat/ghost
+   * button could omit it). On :active the control translates by the shadow
+   * offset and the shadow collapses — the classic arcade press-in. Gated so
+   * reduced-motion users still get the state change without a transition. */
+  .acx-btn {
+    position: relative;
+    transition: transform 80ms steps(2, end), box-shadow 80ms steps(2, end),
+      background-color 120ms steps(2, end);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .acx-btn {
+      transition: none;
+    }
+  }
+  .acx-btn-shadow {
+    box-shadow: var(--acx-shadow-elevated);
+  }
+  .acx-btn-shadow:hover {
+    box-shadow: var(--acx-shadow-soft);
+    transform: translate(1px, 1px);
+  }
+  .acx-btn-shadow:active {
+    /* Press the button down into its shadow: move by the full offset and
+     * collapse the drop so it reads as physically pushed in. */
+    box-shadow: 0 0 0 0 var(--acx-color-hairline);
+    transform: translate(
+      var(--acx-press-offset, 3px),
+      var(--acx-press-offset, 3px)
     );
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
-    border: 1px solid var(--acx-color-hairline);
-    box-shadow:
-      inset 0 1px 0 0 var(--acx-edge-highlight),
-      var(--acx-shadow-elevated);
+  }
+  .acx-btn-shadow:disabled:active {
+    /* Disabled controls never depress. */
+    box-shadow: var(--acx-shadow-elevated);
+    transform: none;
   }
 
-  /* Premium entrance: a soft scale + lift + fade, compositor-only (transform +
-   * opacity) so it stays 60fps. Gated behind motion-safe so reduced-motion
-   * users get an instant, motionless surface (Req 20.6). */
+  /* ── Arcade console (toolbar popup) ──────────────────────────────────
+   * The whole popup is styled like the white retro gaming console in the
+   * brand art: a fixed white body with a thick dark rounded frame. Colors are
+   * intentionally fixed (not theme tokens) so the console looks identical for
+   * every selected background color. The popup <body> is painted the same
+   * white so the popup window's square corners blend into the rounded frame —
+   * leaving only the single rounded console visible. */
+  .acx-arcade-console {
+    background-color: #ffffff;
+    color: #0a0118;
+    border: 4px solid #0a0118;
+    border-radius: 22px;
+  }
+  /* Headings / labels inside the console always read on white. */
+  .acx-arcade-console .text-ink,
+  .acx-arcade-console h1,
+  .acx-arcade-console h2 {
+    color: #0a0118;
+  }
+
+  /* ── CRT screen ──────────────────────────────────────────────────────
+   * The notepad "display" area: a mint screen with horizontal scanlines and a
+   * thick dark bezel, exactly like the console screen in the brand art. */
+  .acx-arcade-screen {
+    background-color: #bff0d0;
+    color: #1a2e22;
+    border: 4px solid #0a0118;
+    border-radius: 12px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(10, 1, 24, 0.12) 0px,
+      rgba(10, 1, 24, 0.12) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+  .acx-arcade-screen .text-ink-faint,
+  .acx-arcade-screen .text-ink-muted,
+  .acx-arcade-screen .text-ink-secondary {
+    color: #1a2e22;
+  }
+
+  .acx-glass {
+    background-color: var(--acx-color-surface);
+    border: 2px solid var(--acx-color-hairline);
+    box-shadow: var(--acx-shadow-elevated);
+  }
+
+  /* Popup window body: paint it the same white as the console and drop the
+   * scanline texture so the popup's square window corners disappear behind the
+   * single rounded console frame — independent of the chosen theme. */
+  .acx-popup-body {
+    background-color: #ffffff;
+    background-image: none;
+  }
+
+  /* Entrance: a quick offset "pop" — compositor-only (transform + opacity).
+   * Gated behind motion-safe so reduced-motion users get an instant surface. */
   @media (prefers-reduced-motion: no-preference) {
     .acx-enter {
-      animation: acx-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: acx-enter 150ms steps(3, end) both;
     }
     .acx-scrim-in {
-      animation: acx-fade 180ms ease-out both;
+      animation: acx-fade 150ms ease-out both;
     }
   }
   @keyframes acx-enter {
     from {
       opacity: 0;
-      transform: translateY(10px) scale(0.96);
+      transform: translate(-4px, -4px);
     }
     to {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translate(0, 0);
     }
   }
   @keyframes acx-fade {

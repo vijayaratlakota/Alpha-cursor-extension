@@ -46,6 +46,7 @@ import { createCard } from "../ui/primitives/card";
 import { createTextInput } from "../ui/primitives/textInput";
 import { joinClasses } from "../ui/primitives/classNames";
 import { confirmDialog } from "./confirmDialog";
+import { applyThemeToDocument } from "../ui/applyTheme";
 import { requireProfile } from "../shared/identity";
 import { clearAll } from "../shared/storage";
 import { DEFAULT_SEARCH_SITES, QUERY_PLACEHOLDER } from "../tools/search/searchUrl";
@@ -62,6 +63,13 @@ import {
   setFeatureFlag,
   FEATURE_FLAG_KEYS,
   DEFAULT_FEATURE_FLAGS,
+  getTheme,
+  setTheme,
+  THEME_BACKGROUNDS,
+  DEFAULT_THEME,
+  type ThemePreference,
+  type ThemeMode,
+  type ThemeBackground,
   DEFAULT_SEPARATOR_CONFIG,
   DEFAULT_SYNC_PREFERENCE,
   type FeatureFlags,
@@ -250,7 +258,7 @@ function createToggleRow(onChange: (enabled: boolean) => void): ToggleHandle {
   sw.setAttribute("aria-labelledby", labelId);
   sw.className = joinClasses(
     "relative inline-flex items-center shrink-0 cursor-pointer",
-    "w-[44px] h-[24px] rounded-full border-0 p-0",
+    "w-[46px] h-[26px] rounded-full border-2 border-hairline-strong p-0",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
     "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
   );
@@ -258,7 +266,7 @@ function createToggleRow(onChange: (enabled: boolean) => void): ToggleHandle {
   const knob = document.createElement("span");
   knob.setAttribute("aria-hidden", "true");
   knob.className = joinClasses(
-    "absolute top-[2px] left-[2px] size-[20px] rounded-full bg-surface shadow-soft",
+    "absolute top-[1px] left-[1px] size-[20px] rounded-full bg-surface border-2 border-hairline-strong",
     "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
   );
   sw.appendChild(knob);
@@ -271,8 +279,8 @@ function createToggleRow(onChange: (enabled: boolean) => void): ToggleHandle {
     sw.setAttribute("aria-checked", String(enabled));
     sw.style.backgroundColor = enabled
       ? "var(--acx-color-primary)"
-      : "var(--acx-color-hairline)";
-    knob.style.transform = enabled ? "translateX(20px)" : "translateX(0)";
+      : "var(--acx-color-canvas-soft)";
+    knob.style.transform = enabled ? "translateX(18px)" : "translateX(0)";
     stateText.textContent = enabled ? "On" : "Off";
   };
 
@@ -641,6 +649,127 @@ function createSyncPreferenceControl(
 }
 
 // ---------------------------------------------------------------------------
+// Theme picker (light / dark + light background variant)
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the theme controls: a mode segmented control (Light / Dark) plus, when
+ * Light is selected, a row of background-colour swatches. Changes persist via
+ * `setTheme` (which the popup/options/injected surfaces all react to live) and
+ * are applied immediately to this page through {@link applyThemeToDocument}'s
+ * subscription. `onChange` receives the new preference for status messaging.
+ */
+function createThemeControl(
+  initial: ThemePreference,
+  onChange: (theme: ThemePreference) => void,
+): HTMLElement {
+  const wrap = document.createElement("div");
+  wrap.className = "flex flex-col gap-md";
+
+  let current: ThemePreference = { ...initial };
+
+  // ── Mode segmented control ───────────────────────────────────────
+  const modeRow = document.createElement("div");
+  modeRow.setAttribute("role", "radiogroup");
+  modeRow.setAttribute("aria-label", "Theme mode");
+  modeRow.className = "flex items-center gap-sm";
+
+  const modes: { id: ThemeMode; label: string }[] = [
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+  ];
+
+  // ── Light background swatches ────────────────────────────────────
+  const bgWrap = document.createElement("div");
+  bgWrap.className = "flex flex-col gap-xs";
+  const bgLabel = description("Light background");
+  const swatchRow = document.createElement("div");
+  swatchRow.setAttribute("role", "radiogroup");
+  swatchRow.setAttribute("aria-label", "Light background colour");
+  swatchRow.className = "flex items-center gap-sm flex-wrap";
+  bgWrap.append(bgLabel, swatchRow);
+
+  const syncBgVisibility = (): void => {
+    bgWrap.style.display = current.mode === "light" ? "flex" : "none";
+  };
+
+  const modeButtons: { id: ThemeMode; el: HTMLButtonElement }[] = [];
+  const paintModes = (): void => {
+    for (const { id, el } of modeButtons) {
+      const selected = id === current.mode;
+      el.setAttribute("aria-checked", String(selected));
+      el.style.background = selected
+        ? "var(--acx-color-primary)"
+        : "var(--acx-color-surface)";
+      el.style.color = "var(--acx-color-ink)";
+    }
+  };
+
+  for (const mode of modes) {
+    const btn = createButton({
+      variant: selectedModeVariant(),
+      label: mode.label,
+      ariaLabel: `${mode.label} mode`,
+      onClick: () => {
+        current = { ...current, mode: mode.id };
+        paintModes();
+        syncBgVisibility();
+        onChange(current);
+      },
+    });
+    btn.setAttribute("role", "radio");
+    modeButtons.push({ id: mode.id, el: btn });
+    modeRow.appendChild(btn);
+  }
+
+  const swatchButtons: { id: ThemeBackground; el: HTMLButtonElement }[] = [];
+  const paintSwatches = (): void => {
+    for (const { id, el } of swatchButtons) {
+      const selected = id === current.background;
+      // Selected swatch gets a thicker ring via outline.
+      el.style.outline = selected
+        ? "3px solid var(--acx-color-hairline)"
+        : "none";
+      el.style.outlineOffset = "2px";
+      el.setAttribute("aria-checked", String(selected));
+    }
+  };
+
+  for (const bg of THEME_BACKGROUNDS) {
+    const sw = document.createElement("button");
+    sw.type = "button";
+    sw.setAttribute("role", "radio");
+    sw.setAttribute("aria-label", `${bg.label} background`);
+    sw.title = bg.label;
+    sw.className = joinClasses(
+      "size-8 rounded-md cursor-pointer shrink-0",
+      "border-2 border-hairline-strong",
+      "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    );
+    sw.style.background = bg.swatch;
+    sw.addEventListener("click", () => {
+      current = { ...current, background: bg.id };
+      paintSwatches();
+      onChange(current);
+    });
+    swatchButtons.push({ id: bg.id, el: sw });
+    swatchRow.appendChild(sw);
+  }
+
+  paintModes();
+  paintSwatches();
+  syncBgVisibility();
+
+  wrap.append(modeRow, bgWrap);
+  return wrap;
+}
+
+/** The mode buttons use the secondary (white pill) button variant. */
+function selectedModeVariant(): "secondary" {
+  return "secondary";
+}
+
+// ---------------------------------------------------------------------------
 // Feature toggles (per-feature automatic behaviors)
 // ---------------------------------------------------------------------------
 
@@ -710,7 +839,7 @@ function createFeatureSwitchRow(
   sw.setAttribute("aria-labelledby", labelId);
   sw.className = joinClasses(
     "relative inline-flex items-center shrink-0 cursor-pointer",
-    "w-[44px] h-[24px] rounded-full border-0 p-0",
+    "w-[46px] h-[26px] rounded-full border-2 border-hairline-strong p-0",
     "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
     "motion-safe:transition-colors motion-safe:duration-150 motion-safe:ease-out",
   );
@@ -718,7 +847,7 @@ function createFeatureSwitchRow(
   const knob = document.createElement("span");
   knob.setAttribute("aria-hidden", "true");
   knob.className = joinClasses(
-    "absolute top-[2px] left-[2px] size-[20px] rounded-full bg-surface shadow-soft",
+    "absolute top-[1px] left-[1px] size-[20px] rounded-full bg-surface border-2 border-hairline-strong",
     "motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out",
   );
   sw.appendChild(knob);
@@ -728,8 +857,8 @@ function createFeatureSwitchRow(
     sw.setAttribute("aria-checked", String(on));
     sw.style.backgroundColor = on
       ? "var(--acx-color-primary)"
-      : "var(--acx-color-hairline)";
-    knob.style.transform = on ? "translateX(20px)" : "translateX(0)";
+      : "var(--acx-color-canvas-soft)";
+    knob.style.transform = on ? "translateX(18px)" : "translateX(0)";
   };
   paint(current);
 
@@ -898,7 +1027,7 @@ function createPrivacyStatement(): HTMLElement {
 export function mountOptions(root: HTMLElement, settings: Settings): void {
   root.className = joinClasses(
     "mx-auto max-w-[720px] box-border flex flex-col gap-lg",
-    "bg-canvas-soft text-ink font-sans p-lg",
+    "bg-canvas text-ink font-sans p-lg",
   );
 
   // Shared status region (announced saves / clear outcome).
@@ -970,6 +1099,34 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
     syncControl,
   );
 
+  // ── Theme picker ─────────────────────────────────────────────────────
+  const themeBody = document.createElement("div");
+  themeBody.className = "flex flex-col gap-sm";
+  const renderTheme = (pref: ThemePreference): void => {
+    themeBody.replaceChildren(
+      createThemeControl(pref, (next) => {
+        void setTheme(next);
+        status.show(
+          next.mode === "dark"
+            ? "Dark mode on."
+            : `Light mode — ${next.background} background.`,
+          "success",
+        );
+      }),
+    );
+  };
+  renderTheme({ ...DEFAULT_THEME });
+  void getTheme()
+    .then(renderTheme)
+    .catch(() => {
+      /* default already rendered */
+    });
+  const themeCard = sectionCard(
+    "Theme",
+    "Choose light or dark mode. In light mode, pick a background colour.",
+    themeBody,
+  );
+
   // ── Feature toggles ──────────────────────────────────────────────────
   // Seed from defaults (all on) then refine once the persisted flags resolve.
   const featuresBody = document.createElement("div");
@@ -1004,6 +1161,7 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
   root.append(
     header,
     toggleCard,
+    themeCard,
     featuresCard,
     separatorCard,
     searchCard,
@@ -1025,6 +1183,7 @@ export function mountOptions(root: HTMLElement, settings: Settings): void {
 
 const appRoot = document.getElementById("app");
 if (appRoot) {
+  applyThemeToDocument();
   void loadSettings()
     .then((settings) => mountOptions(appRoot, settings))
     .catch(() => {

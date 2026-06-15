@@ -594,3 +594,173 @@ export function onFeatureFlagsChanged(
   chrome.storage.onChanged.addListener(listener);
   return () => chrome.storage.onChanged.removeListener(listener);
 }
+
+// ---------------------------------------------------------------------------
+// Theme preference (light / dark + light background variant)
+// ---------------------------------------------------------------------------
+//
+// The user picks an overall theme MODE (light or dark) and, in light mode, one
+// of several CANVAS background colours (the arcade variant offers more than
+// plain white). The preference is stored at `acx:{profileId}:settings:theme`
+// in `chrome.storage.sync` (fallback `local`) and is cached for synchronous
+// application, mirroring the Toggle/feature-flag pattern. It is applied by
+// setting `data-acx-theme` (mode) and `data-acx-bg` (light background variant)
+// on every surface root (popup, options, and each injected Shadow-DOM host).
+
+/** Overall theme mode. */
+export type ThemeMode = "light" | "dark";
+
+/** Light-mode canvas background variants (ignored in dark mode). */
+export type ThemeBackground =
+  | "mint"
+  | "white"
+  | "peach"
+  | "sky"
+  | "lavender"
+  | "lemon"
+  | "indigo"
+  | "violet"
+  | "coral";
+
+/** The full theme preference. */
+export interface ThemePreference {
+  mode: ThemeMode;
+  /** Active light-mode background variant (applies only when `mode === "light"`). */
+  background: ThemeBackground;
+}
+
+/** Ordered light background variants for rendering the picker, with swatches. */
+export const THEME_BACKGROUNDS: {
+  id: ThemeBackground;
+  label: string;
+  swatch: string;
+}[] = [
+  { id: "mint", label: "Mint", swatch: "#bff0d0" },
+  { id: "white", label: "White", swatch: "#ffffff" },
+  { id: "peach", label: "Peach", swatch: "#ffe0c2" },
+  { id: "sky", label: "Sky", swatch: "#bfe3ff" },
+  { id: "lavender", label: "Lavender", swatch: "#e3d4ff" },
+  { id: "lemon", label: "Lemon", swatch: "#fff4b0" },
+  { id: "indigo", label: "Indigo", swatch: "#4503ff" },
+  { id: "violet", label: "Violet", swatch: "#9747ff" },
+  { id: "coral", label: "Coral", swatch: "#ff5555" },
+];
+
+/** Default theme: light mode on the mint arcade canvas. */
+export const DEFAULT_THEME: ThemePreference = {
+  mode: "light",
+  background: "mint",
+};
+
+/** Profile-scoped key holding the {@link ThemePreference}: `…:settings:theme`. */
+export function themeKey(profileId: string): string {
+  return scopedKey(profileId, StorageDomain.SETTINGS, "theme");
+}
+
+const THEME_KEY_SUFFIX = `${KEY_SEPARATOR}${StorageDomain.SETTINGS}${KEY_SEPARATOR}theme`;
+
+/** True when `key` is an Alpha Cursor profile-scoped theme key. */
+function isThemeKey(key: string): boolean {
+  return key.startsWith(KEY_PREFIX) && key.endsWith(THEME_KEY_SUFFIX);
+}
+
+/** Last known theme preference, cached for synchronous application. */
+let cachedTheme: ThemePreference | null = null;
+
+const VALID_BACKGROUNDS = new Set<ThemeBackground>(
+  THEME_BACKGROUNDS.map((b) => b.id),
+);
+
+/** Coerce a stored/partial value into a complete, valid {@link ThemePreference}. */
+function normalizeTheme(
+  stored: Partial<ThemePreference> | undefined,
+): ThemePreference {
+  const mode: ThemeMode = stored?.mode === "dark" ? "dark" : "light";
+  const background: ThemeBackground =
+    stored?.background && VALID_BACKGROUNDS.has(stored.background)
+      ? stored.background
+      : DEFAULT_THEME.background;
+  return { mode, background };
+}
+
+/**
+ * Synchronously return the last known theme preference, defaulting to
+ * {@link DEFAULT_THEME} until a value has been loaded. Surface factories use
+ * this to apply the theme without awaiting storage.
+ */
+export function getCachedTheme(): ThemePreference {
+  return cachedTheme ?? { ...DEFAULT_THEME };
+}
+
+/** Read the theme preference from sync, falling back to local. */
+async function readThemeValue(
+  key: string,
+): Promise<Partial<ThemePreference> | undefined> {
+  try {
+    const fromSync = await getSync<Partial<ThemePreference>>(key);
+    if (fromSync && typeof fromSync === "object") return fromSync;
+    const fromLocal = await getLocal<Partial<ThemePreference>>(key);
+    return fromLocal && typeof fromLocal === "object" ? fromLocal : undefined;
+  } catch {
+    try {
+      const fromLocal = await getLocal<Partial<ThemePreference>>(key);
+      return fromLocal && typeof fromLocal === "object" ? fromLocal : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
+/** Read the persisted theme preference (defaulting to light/mint), caching it. */
+export async function getTheme(): Promise<ThemePreference> {
+  const profileId = await requireProfile();
+  const stored = await readThemeValue(themeKey(profileId));
+  const theme = normalizeTheme(stored);
+  cachedTheme = theme;
+  return theme;
+}
+
+/** Persist the full theme preference (Req 19.3-style non-blocking write). */
+export async function setTheme(theme: ThemePreference): Promise<void> {
+  const profileId = await requireProfile();
+  const next = normalizeTheme(theme);
+  cachedTheme = next;
+  const key = themeKey(profileId);
+  try {
+    await setSync<ThemePreference>(key, next);
+  } catch {
+    await setLocal<ThemePreference>(key, next);
+  }
+}
+
+/**
+ * Subscribe to theme-preference changes across contexts (mirrors
+ * {@link onEnabledChanged}). The cache is refreshed before `cb` fires. Returns
+ * an unsubscribe function.
+ */
+export function onThemeChanged(
+  cb: (theme: ThemePreference) => void,
+): () => void {
+  const storage = (globalThis as { chrome?: typeof chrome }).chrome?.storage;
+  if (!storage || !storage.onChanged) {
+    // No extension storage in this context (e.g. unit tests) — nothing to
+    // subscribe to; return a no-op unsubscribe.
+    return () => {};
+  }
+  const listener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string,
+  ): void => {
+    if (areaName !== "sync" && areaName !== "local") return;
+    for (const [key, change] of Object.entries(changes)) {
+      if (!isThemeKey(key)) continue;
+      const next = normalizeTheme(
+        (change.newValue as Partial<ThemePreference> | undefined) ?? undefined,
+      );
+      cachedTheme = next;
+      cb(next);
+    }
+  };
+  storage.onChanged.addListener(listener);
+  return () => storage.onChanged.removeListener(listener);
+}

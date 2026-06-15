@@ -42,6 +42,9 @@ vi.mock("../shared/settings", () => ({
     cookieRemoval: true,
   }),
   onFeatureFlagsChanged: () => () => {},
+  getCachedTheme: () => ({ mode: "light", background: "mint" }),
+  getTheme: () => Promise.resolve({ mode: "light", background: "mint" }),
+  onThemeChanged: () => () => {},
 }));
 
 // Cookie removal: no-op.

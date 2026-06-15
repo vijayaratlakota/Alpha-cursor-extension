@@ -89,7 +89,7 @@ describe("auto-copy on drag selection", () => {
     const detach = initAutoCopy(document);
     const style = document.getElementById("acx-autocopy-selection-style");
     expect(style).not.toBeNull();
-    expect(style?.textContent).toContain("#9fe870");
+    expect(style?.textContent).toContain("#ffd913");
     detach();
     expect(document.getElementById("acx-autocopy-selection-style")).toBeNull();
   });

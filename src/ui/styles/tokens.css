@@ -1,151 +1,144 @@
 /*
- * Alpha Cursor — Wise design tokens (raw CSS custom properties)
+ * Alpha Cursor — design tokens (raw CSS custom properties)
  * --------------------------------------------------------------
- * Source of truth: wise/DESIGN.md (Wise design analysis).
+ * Source of truth: "Create Next App" retro / neo-brutalist design system,
+ * LIGHT (arcade) variant.
  *
- * Wise's identity is a single vivid lime-green primary (#9fe870) carrying DARK
- * ink text, set on a sage-tinted canvas (#e8ebe6) with white cards, near-black
- * olive ink, a friendly 24px rounded geometry, and a full semantic palette
- * (positive / warning / negative). There is NO second brand accent — the green
- * is the sole identity colour and is reserved for primary actions.
+ * Identity: a MINT-green canvas (with CRT scanlines on full-page surfaces),
+ * WHITE panels outlined with THICK BLACK borders, a vivid YELLOW (#ffd913)
+ * primary and CORAL-RED (#ff5a5f) secondary accent, near-black pixel ink, the
+ * VT323 pixel/monospace face, and HARD BLACK OFFSET shadows (no blur — the
+ * brutalist drop). Interactive controls "press into" their shadow on click.
  *
  * This file contains ONLY plain CSS custom properties (no Tailwind directives)
  * so it can be injected into closed Shadow DOM roots. Tokens are declared on
  * BOTH `:root` (popup / options documents) and `:host` (content-script Shadow
- * DOM). Token NAMES are kept stable across re-skins (primary, on-primary,
- * canvas, ink, accent-*, …) so component code does not need to change when the
- * brand changes — only the values here move.
+ * DOM). Token NAMES are kept stable across re-skins so component code does not
+ * change when the brand changes — only the values here move.
  *
- * THEMING: LIGHT is the default. A Wise-flavoured DARK theme (the brand's
- * "ink + green" polarity) activates via `prefers-color-scheme: dark` and can be
- * forced with `[data-acx-theme="dark"|"light"]`.
+ * THEMING: single light-first arcade theme. The forced overrides
+ * (`[data-acx-theme="dark"|"light"]`) both resolve to this palette so injected
+ * surfaces render consistently regardless of the host page's color scheme.
  */
 
 :root,
 :host {
-  /* ── Brand & accent — the lime-green Wise primary ───────────────── */
-  /* Wise green is the sole identity colour, reserved for primary actions.
-   * It carries DARK ink text (not white) — that contrast is the brand. */
-  --acx-color-primary: #9fe870;
-  --acx-color-primary-active: #cdffad;
-  --acx-color-secondary: #163300; /* deep forest ink, for inverted bands */
-  --acx-color-on-primary: #0e0f0c;
-  /* Soft green tints for badges / subtle brand fills. */
-  --acx-color-primary-pale: #e2f6d5;
-  --acx-color-primary-neutral: #c5edab;
+  /* ── Brand & accent — yellow primary, coral-red secondary ───────── */
+  --acx-color-primary: #ffd913;
+  --acx-color-primary-active: #ffe957;
+  --acx-color-secondary: #ff5a5f; /* coral red accent */
+  --acx-color-on-primary: #0a0118;
+  --acx-color-primary-pale: #fff6c2;
+  --acx-color-primary-neutral: #ffefa0;
 
   /* ── Surfaces ───────────────────────────────────────────────────── */
-  --acx-color-canvas: #e8ebe6; /* sage-tinted page background (brand mood) */
-  --acx-color-canvas-soft: #ffffff; /* white card interiors on the sage canvas */
+  --acx-color-canvas: #bff0d0; /* mint arcade canvas */
+  --acx-color-canvas-soft: #ffffff; /* white card base */
   --acx-color-surface: #ffffff;
   --acx-color-surface-raised: #ffffff;
-  --acx-color-hairline: #d4d8d0; /* soft sage hairline */
-  --acx-color-hairline-strong: #0e0f0c; /* ink 1px border for inputs (Wise) */
+  --acx-color-hairline: #0a0118; /* THICK black brutalist border */
+  --acx-color-hairline-strong: #0a0118;
 
-  /* ── Ink (text) — near-black with olive warmth ──────────────────── */
-  --acx-color-ink: #0e0f0c;
-  --acx-color-ink-secondary: #454745; /* body */
-  --acx-color-ink-muted: #868685; /* mute — captions/placeholder */
-  --acx-color-ink-faint: #a6a8a4;
+  /* ── Ink (text) — near-black pixel ──────────────────────────────── */
+  --acx-color-ink: #0a0118;
+  --acx-color-ink-secondary: #2c1d55; /* deep purple body */
+  --acx-color-ink-muted: #6b5b95; /* muted purple — captions/placeholder */
+  --acx-color-ink-faint: #9488b8;
 
-  /* ── Semantic palette (Wise positive / warning / negative) ──────── */
-  --acx-color-positive: #2ead4b;
-  --acx-color-positive-deep: #054d28;
-  --acx-color-warning: #ffd11a;
-  --acx-color-warning-deep: #b86700;
-  --acx-color-negative: #d03238;
-  --acx-color-negative-deep: #a72027;
-  --acx-color-negative-bg: #320707;
+  /* ── Semantic palette ───────────────────────────────────────────── */
+  --acx-color-positive: #2bb673;
+  --acx-color-positive-deep: #0c5c34;
+  --acx-color-warning: #ffd913;
+  --acx-color-warning-deep: #8a7400;
+  --acx-color-negative: #ff5a5f;
+  --acx-color-negative-deep: #a30024;
+  --acx-color-negative-bg: #ffe1e2;
 
-  /* ── Semantic interaction fills (theme-adaptive) ────────────────── */
-  --acx-fill-subtle: rgba(14, 15, 12, 0.05);
-  --acx-fill-hover: rgba(14, 15, 12, 0.06);
-  --acx-fill-active: rgba(14, 15, 12, 0.1);
-  --acx-scrim: rgba(14, 15, 12, 0.4);
+  /* ── Semantic interaction fills ─────────────────────────────────── */
+  --acx-fill-subtle: rgba(10, 1, 24, 0.05);
+  --acx-fill-hover: rgba(10, 1, 24, 0.08);
+  --acx-fill-active: rgba(10, 1, 24, 0.14);
+  --acx-scrim: rgba(10, 1, 24, 0.4);
   --acx-edge-highlight: transparent;
 
-  /* ── Accent tokens (kept by NAME for back-compat; Wise values) ──── */
-  /* Wise has no decorative sticker palette — these now map onto Wise's
-   * semantic + tertiary accents so existing `accent-*` class references resolve
-   * to on-brand colours. */
-  --acx-color-accent-green: #2ead4b; /* positive */
-  --acx-color-accent-green-deep: #054d28;
-  --acx-color-accent-sky: #38c8ff; /* Wise tertiary cyan */
-  --acx-color-accent-cyan: #38c8ff;
-  --acx-color-accent-orange: #ffc091; /* Wise tertiary peach */
-  --acx-color-accent-orange-deep: #a72027; /* negative-deep (error ink) */
-  --acx-color-accent-purple: #c5edab;
-  --acx-color-accent-purple-deep: #054d28;
-  --acx-color-accent-pink: #ffc091;
-  --acx-color-accent-teal: #2ead4b;
-  --acx-color-accent-brown: #4a3b1c;
+  /* ── Accent tokens (kept by NAME for back-compat; retro values) ─── */
+  --acx-color-accent-green: #2bb673;
+  --acx-color-accent-green-deep: #0c5c34;
+  --acx-color-accent-sky: #38b6ff;
+  --acx-color-accent-cyan: #38b6ff;
+  --acx-color-accent-orange: #ffd913;
+  --acx-color-accent-orange-deep: #a30024;
+  --acx-color-accent-purple: #4503ff;
+  --acx-color-accent-purple-deep: #2c1d55;
+  --acx-color-accent-pink: #ff5a5f;
+  --acx-color-accent-teal: #2bb673;
+  --acx-color-accent-brown: #8a7400;
 
   /* ── Typography: family ─────────────────────────────────────────── */
-  /* Wise Sans is proprietary; Inter weight 900 substitutes for the heavy
-   * display voice, with Inter for sub-display + body (the brand's real face). */
-  --acx-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Helvetica,
-    Arial, sans-serif;
-  --acx-font-feature-settings: "calt" 1;
+  /* VT323 retro pixel/monospace face, bundled locally (no remote code). */
+  --acx-font-sans: "VT323", "Courier New", ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+  --acx-font-feature-settings: normal;
 
   /* ── Typography scale ───────────────────────────────────────────── */
-  /* Role names kept stable; weights tuned toward Wise's heavier voice
-   * (display weight 900, headings 700, strong body/buttons 600). */
+  /* VT323 reads small, so the scale runs a touch larger than a UI sans.
+   * Weight stays 400 (VT323 ships one weight); hierarchy comes from SIZE. */
   --acx-text-display-1: 64px;
-  --acx-text-display-1-weight: 900;
-  --acx-text-display-1-line-height: 1.02;
-  --acx-text-display-1-letter-spacing: -1px;
+  --acx-text-display-1-weight: 400;
+  --acx-text-display-1-line-height: 1.0;
+  --acx-text-display-1-letter-spacing: 0px;
 
-  --acx-text-display-2: 47px;
-  --acx-text-display-2-weight: 900;
-  --acx-text-display-2-line-height: 1.05;
-  --acx-text-display-2-letter-spacing: -0.5px;
+  --acx-text-display-2: 48px;
+  --acx-text-display-2-weight: 400;
+  --acx-text-display-2-line-height: 1.02;
+  --acx-text-display-2-letter-spacing: 0px;
 
-  --acx-text-heading-1: 40px;
-  --acx-text-heading-1-weight: 900;
+  --acx-text-heading-1: 36px;
+  --acx-text-heading-1-weight: 400;
   --acx-text-heading-1-line-height: 1.05;
-  --acx-text-heading-1-letter-spacing: -0.5px;
+  --acx-text-heading-1-letter-spacing: 0px;
 
   --acx-text-heading-2: 32px;
-  --acx-text-heading-2-weight: 700;
-  --acx-text-heading-2-line-height: 1.2;
-  --acx-text-heading-2-letter-spacing: -0.5px;
+  --acx-text-heading-2-weight: 400;
+  --acx-text-heading-2-line-height: 1.1;
+  --acx-text-heading-2-letter-spacing: 0px;
 
   --acx-text-heading-3: 24px;
-  --acx-text-heading-3-weight: 700;
-  --acx-text-heading-3-line-height: 1.3;
-  --acx-text-heading-3-letter-spacing: -0.4px;
+  --acx-text-heading-3-weight: 400;
+  --acx-text-heading-3-line-height: 1.2;
+  --acx-text-heading-3-letter-spacing: 0px;
 
   --acx-text-title: 20px;
-  --acx-text-title-weight: 600;
-  --acx-text-title-line-height: 1.4;
-  --acx-text-title-letter-spacing: -0.2px;
+  --acx-text-title-weight: 400;
+  --acx-text-title-line-height: 1.3;
+  --acx-text-title-letter-spacing: 0px;
 
-  --acx-text-body-md: 16px;
+  --acx-text-body-md: 18px;
   --acx-text-body-md-weight: 400;
-  --acx-text-body-md-line-height: 1.5;
-  --acx-text-body-md-letter-spacing: 0;
+  --acx-text-body-md-line-height: 1.35;
+  --acx-text-body-md-letter-spacing: 0px;
 
-  --acx-text-body-sm: 14px;
+  --acx-text-body-sm: 16px;
   --acx-text-body-sm-weight: 400;
-  --acx-text-body-sm-line-height: 1.43;
-  --acx-text-body-sm-letter-spacing: 0;
+  --acx-text-body-sm-line-height: 1.4;
+  --acx-text-body-sm-letter-spacing: 0px;
 
-  --acx-text-button: 16px;
-  --acx-text-button-weight: 600;
-  --acx-text-button-line-height: 1.5;
-  --acx-text-button-letter-spacing: 0;
+  --acx-text-button: 18px;
+  --acx-text-button-weight: 400;
+  --acx-text-button-line-height: 1.2;
+  --acx-text-button-letter-spacing: 0.5px;
 
-  --acx-text-caption: 12px;
+  --acx-text-caption: 16px;
   --acx-text-caption-weight: 400;
-  --acx-text-caption-line-height: 1.33;
-  --acx-text-caption-letter-spacing: 0;
+  --acx-text-caption-line-height: 1.3;
+  --acx-text-caption-letter-spacing: 0px;
 
-  --acx-text-eyebrow: 12px;
-  --acx-text-eyebrow-weight: 600;
-  --acx-text-eyebrow-line-height: 1.33;
-  --acx-text-eyebrow-letter-spacing: 0.04em;
+  --acx-text-eyebrow: 14px;
+  --acx-text-eyebrow-weight: 400;
+  --acx-text-eyebrow-line-height: 1.3;
+  --acx-text-eyebrow-letter-spacing: 0.08em;
 
-  /* ── Spacing scale (4px base, Wise) ─────────────────────────────── */
+  /* ── Spacing scale (retro 8px base) ─────────────────────────────── */
   --acx-spacing-xxs: 2px;
   --acx-spacing-xs: 4px;
   --acx-spacing-sm: 8px;
@@ -154,162 +147,150 @@
   --acx-spacing-xl: 24px;
   --acx-spacing-xxl: 32px;
 
-  /* ── Border radius scale (Wise — generous, friendly) ────────────── */
-  /* xl 24px is Wise's canonical button + card radius. */
-  --acx-radius-xs: 6px;
-  --acx-radius-sm: 8px;
-  --acx-radius-md: 12px;
-  --acx-radius-lg: 16px;
-  --acx-radius-xl: 24px;
+  /* ── Border radius scale (squared / brutalist) ──────────────────── */
+  --acx-radius-xs: 0px;
+  --acx-radius-sm: 2px;
+  --acx-radius-md: 4px;
+  --acx-radius-lg: 6px;
+  --acx-radius-xl: 8px;
   --acx-radius-full: 9999px;
 
-  /* ── Elevation ──────────────────────────────────────────────────── */
-  /* Wise leans on surface contrast (white cards on sage) for elevation; these
-   * soft warm shadows are used only for floating popovers / toasts / modals. */
-  --acx-shadow-soft: rgba(14, 15, 12, 0.04) 0px 1px 2px,
-    rgba(14, 15, 12, 0.05) 0px 2px 8px, rgba(14, 15, 12, 0.06) 0px 8px 20px;
-  --acx-shadow-elevated: rgba(14, 15, 12, 0.06) 0px 2px 6px,
-    rgba(14, 15, 12, 0.08) 0px 8px 22px, rgba(14, 15, 12, 0.12) 0px 24px 56px;
+  /* ── Elevation — HARD BLACK OFFSET shadows (no blur) ────────────── */
+  --acx-shadow-soft: #0a0118 3px 3px 0px 0px;
+  --acx-shadow-elevated: #0a0118 6px 6px 0px 0px;
+
+  /* ── Press distance — how far a control moves "into" its shadow ─── */
+  --acx-press-offset: 3px;
 }
 
 /*
- * ── DARK THEME (Wise "ink + green" polarity) ──────────────────────────────
- * Wise's dark moment is a near-black olive ink canvas carrying the lime-green
- * accent. We keep the green primary with dark text (the green is bright enough
- * to remain legible), step the surfaces in warm charcoals, draw hairlines as
- * low-alpha white, and brighten ink to near-white.
+ * ── THEME OVERRIDES ───────────────────────────────────────────────────────
+ * The base `:root, :host` block above is the LIGHT default (mint canvas). The
+ * blocks below let the user pick:
+ *   - a MODE via `data-acx-theme="light"|"dark"`, and
+ *   - in light mode, a CANVAS background via `data-acx-bg="mint|white|peach|
+ *     sky|lavender|lemon|indigo|violet|coral"`.
+ * These attributes are set on every surface root (popup, options, and each
+ * injected Shadow-DOM host) so the chosen theme applies everywhere.
  */
-@media (prefers-color-scheme: dark) {
-  :root,
-  :host {
-    --acx-color-primary: #9fe870;
-    --acx-color-primary-active: #cdffad;
-    --acx-color-secondary: #9fe870;
-    --acx-color-on-primary: #0e0f0c;
-    --acx-color-primary-pale: #1f2d12;
-    --acx-color-primary-neutral: #2a3d18;
 
-    --acx-color-canvas: #0e0f0c;
-    --acx-color-canvas-soft: #17190f;
-    --acx-color-surface: #1c1e16;
-    --acx-color-surface-raised: #23261c;
-    --acx-color-hairline: rgba(255, 255, 255, 0.1);
-    --acx-color-hairline-strong: rgba(255, 255, 255, 0.24);
-
-    --acx-color-ink: rgba(255, 255, 255, 0.92);
-    --acx-color-ink-secondary: rgba(255, 255, 255, 0.7);
-    --acx-color-ink-muted: rgba(255, 255, 255, 0.46);
-    --acx-color-ink-faint: rgba(255, 255, 255, 0.32);
-
-    --acx-color-positive: #5bd178;
-    --acx-color-positive-deep: #9fe870;
-    --acx-color-warning: #ffd11a;
-    --acx-color-warning-deep: #ffb84d;
-    --acx-color-negative: #ff6b70;
-    --acx-color-negative-deep: #ff9498;
-    --acx-color-negative-bg: #2a0a0b;
-
-    --acx-fill-subtle: rgba(255, 255, 255, 0.05);
-    --acx-fill-hover: rgba(255, 255, 255, 0.08);
-    --acx-fill-active: rgba(255, 255, 255, 0.13);
-    --acx-scrim: rgba(0, 0, 0, 0.62);
-    --acx-edge-highlight: rgba(255, 255, 255, 0.06);
-
-    --acx-color-accent-green: #5bd178;
-    --acx-color-accent-green-deep: #9fe870;
-    --acx-color-accent-sky: #38c8ff;
-    --acx-color-accent-cyan: #38c8ff;
-    --acx-color-accent-orange: #ffc091;
-    --acx-color-accent-orange-deep: #ff9498;
-    --acx-color-accent-purple: #c5edab;
-    --acx-color-accent-pink: #ffc091;
-    --acx-color-accent-teal: #5bd178;
-    --acx-color-accent-brown: #d8c9a8;
-
-    --acx-shadow-soft: rgba(0, 0, 0, 0.3) 0px 1px 2px,
-      rgba(0, 0, 0, 0.34) 0px 2px 8px, rgba(0, 0, 0, 0.4) 0px 8px 20px;
-    --acx-shadow-elevated: rgba(0, 0, 0, 0.4) 0px 2px 6px,
-      rgba(0, 0, 0, 0.46) 0px 8px 22px, rgba(0, 0, 0, 0.54) 0px 24px 56px;
-  }
-}
-
-/* ── DARK THEME (forced) — wins over the media query ─────────────────────── */
-[data-acx-theme="dark"],
-:host([data-acx-theme="dark"]) {
-  --acx-color-primary: #9fe870;
-  --acx-color-primary-active: #cdffad;
-  --acx-color-secondary: #9fe870;
-  --acx-color-on-primary: #0e0f0c;
-  --acx-color-primary-pale: #1f2d12;
-  --acx-color-primary-neutral: #2a3d18;
-
-  --acx-color-canvas: #0e0f0c;
-  --acx-color-canvas-soft: #17190f;
-  --acx-color-surface: #1c1e16;
-  --acx-color-surface-raised: #23261c;
-  --acx-color-hairline: rgba(255, 255, 255, 0.1);
-  --acx-color-hairline-strong: rgba(255, 255, 255, 0.24);
-
-  --acx-color-ink: rgba(255, 255, 255, 0.92);
-  --acx-color-ink-secondary: rgba(255, 255, 255, 0.7);
-  --acx-color-ink-muted: rgba(255, 255, 255, 0.46);
-  --acx-color-ink-faint: rgba(255, 255, 255, 0.32);
-
-  --acx-color-positive: #5bd178;
-  --acx-color-positive-deep: #9fe870;
-  --acx-color-warning: #ffd11a;
-  --acx-color-warning-deep: #ffb84d;
-  --acx-color-negative: #ff6b70;
-  --acx-color-negative-deep: #ff9498;
-  --acx-color-negative-bg: #2a0a0b;
-
-  --acx-fill-subtle: rgba(255, 255, 255, 0.05);
-  --acx-fill-hover: rgba(255, 255, 255, 0.08);
-  --acx-fill-active: rgba(255, 255, 255, 0.13);
-  --acx-scrim: rgba(0, 0, 0, 0.62);
-  --acx-edge-highlight: rgba(255, 255, 255, 0.06);
-
-  --acx-color-accent-green: #5bd178;
-  --acx-color-accent-orange: #ffc091;
-  --acx-color-accent-orange-deep: #ff9498;
-  --acx-color-accent-sky: #38c8ff;
-
-  --acx-shadow-soft: rgba(0, 0, 0, 0.3) 0px 1px 2px,
-    rgba(0, 0, 0, 0.34) 0px 2px 8px, rgba(0, 0, 0, 0.4) 0px 8px 20px;
-  --acx-shadow-elevated: rgba(0, 0, 0, 0.4) 0px 2px 6px,
-    rgba(0, 0, 0, 0.46) 0px 8px 22px, rgba(0, 0, 0, 0.54) 0px 24px 56px;
-}
-
-/* ── LIGHT THEME (forced) — opt back into light under a dark OS ───────────── */
+/* Light mode: explicit (same as the default, for when the attr is forced). */
 [data-acx-theme="light"],
 :host([data-acx-theme="light"]) {
-  --acx-color-primary: #9fe870;
-  --acx-color-primary-active: #cdffad;
-  --acx-color-secondary: #163300;
-  --acx-color-on-primary: #0e0f0c;
-  --acx-color-primary-pale: #e2f6d5;
-  --acx-color-primary-neutral: #c5edab;
-
-  --acx-color-canvas: #e8ebe6;
-  --acx-color-canvas-soft: #ffffff;
+  --acx-color-canvas: #bff0d0;
+  --acx-color-ink: #0a0118;
+  --acx-color-ink-secondary: #2c1d55;
+  --acx-color-ink-muted: #6b5b95;
   --acx-color-surface: #ffffff;
+  --acx-color-canvas-soft: #ffffff;
   --acx-color-surface-raised: #ffffff;
-  --acx-color-hairline: #d4d8d0;
-  --acx-color-hairline-strong: #0e0f0c;
-
-  --acx-color-ink: #0e0f0c;
-  --acx-color-ink-secondary: #454745;
-  --acx-color-ink-muted: #868685;
-  --acx-color-ink-faint: #a6a8a4;
-
-  --acx-fill-subtle: rgba(14, 15, 12, 0.05);
-  --acx-fill-hover: rgba(14, 15, 12, 0.06);
-  --acx-fill-active: rgba(14, 15, 12, 0.1);
-  --acx-scrim: rgba(14, 15, 12, 0.4);
-  --acx-edge-highlight: transparent;
-
-  --acx-color-accent-green: #2ead4b;
-  --acx-color-accent-orange: #ffc091;
-  --acx-color-accent-orange-deep: #a72027;
-  --acx-color-accent-sky: #38c8ff;
+  --acx-color-hairline: #0a0118;
+  --acx-color-hairline-strong: #0a0118;
+  --acx-color-on-primary: #0a0118;
+  --acx-shadow-soft: #0a0118 3px 3px 0px 0px;
+  --acx-shadow-elevated: #0a0118 6px 6px 0px 0px;
 }
+
+/* Light-mode canvas background variants (only meaningful in light mode). */
+[data-acx-bg="mint"],
+:host([data-acx-bg="mint"]) {
+  --acx-color-canvas: #bff0d0;
+}
+[data-acx-bg="white"],
+:host([data-acx-bg="white"]) {
+  --acx-color-canvas: #ffffff;
+}
+[data-acx-bg="peach"],
+:host([data-acx-bg="peach"]) {
+  --acx-color-canvas: #ffe0c2;
+}
+[data-acx-bg="sky"],
+:host([data-acx-bg="sky"]) {
+  --acx-color-canvas: #bfe3ff;
+}
+[data-acx-bg="lavender"],
+:host([data-acx-bg="lavender"]) {
+  --acx-color-canvas: #e3d4ff;
+}
+[data-acx-bg="lemon"],
+:host([data-acx-bg="lemon"]) {
+  --acx-color-canvas: #fff4b0;
+}
+
+/*
+ * Bold canvas variants. Like the pastel variants, these only change the canvas
+ * fill (kept exactly as specified) so cards remain crisp white surfaces with
+ * dark ink + dark hairline borders — identical clarity to the light variants.
+ * The page header text sits directly on the bold canvas, so it is lightened
+ * separately below for legibility.
+ */
+[data-acx-bg="indigo"],
+:host([data-acx-bg="indigo"]) {
+  --acx-color-canvas: #4503ff;
+}
+[data-acx-bg="violet"],
+:host([data-acx-bg="violet"]) {
+  --acx-color-canvas: #9747ff;
+}
+[data-acx-bg="coral"],
+:host([data-acx-bg="coral"]) {
+  --acx-color-canvas: #ff5555;
+}
+
+/*
+ * On the bold canvases, any text rendered directly on the canvas (the options
+ * page header / popup heading + subtitle) needs to be light to stay legible.
+ * Card-contained text is unaffected because it lives on the white surface.
+ * The descendant selectors out-specify the `.text-ink` / `.text-ink-muted`
+ * utilities without needing `!important`.
+ */
+[data-acx-bg="indigo"] header,
+[data-acx-bg="indigo"] header *,
+[data-acx-bg="violet"] header,
+[data-acx-bg="violet"] header *,
+[data-acx-bg="coral"] header,
+[data-acx-bg="coral"] header * {
+  color: #ffffff;
+}
+
+/*
+ * ── DARK MODE ──────────────────────────────────────────────────────────────
+ * The brutalist "ink + neon" night variant: a near-black canvas, dark panels
+ * with bright lilac borders, white text, and a coloured offset shadow that
+ * stays visible on black. The yellow primary persists. `data-acx-bg` is ignored
+ * in dark mode (the canvas is fixed).
+ */
+[data-acx-theme="dark"],
+:host([data-acx-theme="dark"]) {
+  --acx-color-primary: #ffd913;
+  --acx-color-primary-active: #ffe957;
+  --acx-color-secondary: #ff5a5f;
+  --acx-color-on-primary: #0a0118;
+  --acx-color-primary-pale: #2c1d55;
+  --acx-color-primary-neutral: #3a2a6b;
+
+  --acx-color-canvas: #050010;
+  --acx-color-canvas-soft: #15092e;
+  --acx-color-surface: #15092e;
+  --acx-color-surface-raised: #1d1140;
+  --acx-color-hairline: #b49aff;
+  --acx-color-hairline-strong: #ffffff;
+
+  --acx-color-ink: #ffffff;
+  --acx-color-ink-secondary: #d6c9ff;
+  --acx-color-ink-muted: #9488b8;
+  --acx-color-ink-faint: #6b5b95;
+
+  --acx-color-positive: #3ddc84;
+  --acx-color-warning: #ffd913;
+  --acx-color-negative: #ff6b80;
+
+  --acx-fill-subtle: rgba(180, 154, 255, 0.1);
+  --acx-fill-hover: rgba(180, 154, 255, 0.18);
+  --acx-fill-active: rgba(180, 154, 255, 0.26);
+  --acx-scrim: rgba(0, 0, 0, 0.66);
+
+  --acx-shadow-soft: #b49aff 3px 3px 0px 0px;
+  --acx-shadow-elevated: #b49aff 6px 6px 0px 0px;
+}
+

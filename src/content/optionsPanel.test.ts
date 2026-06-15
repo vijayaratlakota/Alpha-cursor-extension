@@ -42,6 +42,10 @@ import { repositionPanel } from "./optionsPanel";
 const toggle = vi.hoisted(() => ({ enabled: true }));
 vi.mock("../shared/settings", () => ({
   getCachedEnabled: () => toggle.enabled,
+  // shadowHost (used by the panel) reads the theme preference.
+  getCachedTheme: () => ({ mode: "light", background: "mint" }),
+  getTheme: () => Promise.resolve({ mode: "light", background: "mint" }),
+  onThemeChanged: () => () => {},
 }));
 
 // ===========================================================================

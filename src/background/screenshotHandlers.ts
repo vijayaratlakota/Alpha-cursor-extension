@@ -340,12 +340,12 @@ async function updateProgressBadge(
     const pct = Math.round(fraction * 100);
 
     if (typeof action.setBadgeBackgroundColor === "function") {
-      // Lime-green Wise primary.
-      await action.setBadgeBackgroundColor({ color: "#9fe870" });
+      // Brand yellow.
+      await action.setBadgeBackgroundColor({ color: "#ffd913" });
     }
     if (typeof action.setBadgeTextColor === "function") {
-      // Dark ink text on the green badge (the Wise contrast).
-      await action.setBadgeTextColor({ color: "#0e0f0c" });
+      // Dark ink text on the yellow badge.
+      await action.setBadgeTextColor({ color: "#0a0118" });
     }
     await action.setBadgeText({ text: String(pct) });
     if (typeof action.setTitle === "function") {

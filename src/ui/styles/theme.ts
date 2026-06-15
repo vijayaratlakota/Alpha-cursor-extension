@@ -35,11 +35,32 @@ import compiledCss from "./tailwind.css?inline";
 import tokensCss from "./tokens.css?inline";
 
 /**
- * The compiled, ready-to-inject shared stylesheet string (Tailwind utilities +
- * Notion tokens + base defaults). Importable wherever a raw style string is
- * needed (e.g. building a `<style>` element or a `CSSStyleSheet`).
+ * Rewrite the bundled font `url("/fonts/…")` (root-relative) to an absolute
+ * `chrome-extension://…` URL via `chrome.runtime.getURL`. This is required for
+ * content-script Shadow DOM surfaces injected into a host page, where a
+ * root-relative URL would resolve against the PAGE origin (e.g.
+ * `https://youtube.com/fonts/…`) and fail to load the bundled VT323 face. On
+ * the extension's own pages the relative URL already works, but rewriting is
+ * harmless there too. No-op when `chrome.runtime.getURL` is unavailable (tests).
  */
-export const sharedStyleString: string = compiledCss;
+function resolveBundledFontUrls(css: string): string {
+  const getURL = (globalThis as { chrome?: typeof chrome }).chrome?.runtime
+    ?.getURL;
+  if (typeof getURL !== "function") return css;
+  // Match url("/fonts/x"), url('/fonts/x'), url(/fonts/x).
+  return css.replace(
+    /url\((['"]?)\/fonts\/([^'")]+)\1\)/g,
+    (_match, quote: string, file: string) =>
+      `url(${quote}${getURL(`fonts/${file}`)}${quote})`,
+  );
+}
+
+/**
+ * The compiled, ready-to-inject shared stylesheet string (Tailwind utilities +
+ * design tokens + base defaults), with bundled font URLs resolved to absolute
+ * extension URLs. Importable wherever a raw style string is needed.
+ */
+export const sharedStyleString: string = resolveBundledFontUrls(compiledCss);
 
 /**
  * The token-only style string (`--acx-*` custom properties). Use when a surface

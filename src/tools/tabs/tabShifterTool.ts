@@ -184,8 +184,8 @@ function buildFavicon(tab: LightTab): HTMLElement {
       "inline-flex items-center justify-center size-6 rounded-full",
       "text-eyebrow font-sans font-semibold",
     );
-    placeholder.style.background = "rgba(255, 255, 255, 0.12)";
-    placeholder.style.color = "#f4f6f0";
+    placeholder.style.background = "var(--acx-color-primary-pale)";
+    placeholder.style.color = "var(--acx-color-ink)";
     placeholder.textContent = placeholderGlyph(tab.title);
     return placeholder;
   };
@@ -259,47 +259,40 @@ function buildPanelStyles(): HTMLStyleElement {
   const style = document.createElement("style");
   style.textContent = `
     .acx-tabwheel {
-      background:
-        radial-gradient(135% 135% at 50% 0%,
-          rgba(32, 36, 26, 0.86) 0%,
-          rgba(20, 22, 15, 0.82) 58%,
-          rgba(14, 15, 12, 0.86) 100%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-      backdrop-filter: blur(20px) saturate(160%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-        rgba(0, 0, 0, 0.45) 0px 12px 40px,
-        rgba(0, 0, 0, 0.55) 0px 32px 64px;
+      background: var(--acx-color-surface);
+      border: 3px solid var(--acx-color-hairline);
+      box-shadow: var(--acx-shadow-elevated);
     }
     .acx-tab-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.06);
-      color: #f4f6f0;
+      border: 3px solid var(--acx-color-hairline);
+      background: var(--acx-color-surface);
+      color: var(--acx-color-ink);
       cursor: pointer;
       border-radius: 9999px;
       outline: none;
-      transition: background-color 160ms ease-out, border-color 160ms ease-out,
-        box-shadow 160ms ease-out, transform 160ms ease-out;
+      box-shadow: var(--acx-shadow-soft);
+      transition: background-color 100ms steps(2, end),
+        box-shadow 80ms steps(2, end), transform 80ms steps(2, end);
     }
     .acx-tab-btn:hover,
     .acx-tab-btn:focus-visible {
-      background: rgba(159, 232, 112, 0.16);
-      border-color: rgba(159, 232, 112, 0.5);
-      box-shadow: 0 0 0 5px rgba(159, 232, 112, 0.16);
+      background: var(--acx-color-primary);
+      transform: translate(1px, 1px);
     }
-    .acx-tab-empty { color: rgba(255, 255, 255, 0.5); }
+    .acx-tab-btn:active {
+      box-shadow: 0 0 0 0 var(--acx-color-hairline);
+      transform: translate(var(--acx-press-offset, 3px), var(--acx-press-offset, 3px));
+    }
+    .acx-tab-empty { color: var(--acx-color-ink-muted); }
     @media (prefers-reduced-motion: no-preference) {
-      .acx-tabwheel { animation: acx-tabwheel-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-      .acx-tab-btn:hover,
-      .acx-tab-btn:focus-visible { transform: scale(1.08); }
+      .acx-tabwheel { animation: acx-tabwheel-in 150ms steps(3, end) both; }
     }
     @keyframes acx-tabwheel-in {
-      from { opacity: 0; transform: scale(0.88); }
+      from { opacity: 0; transform: scale(0.92); }
       to   { opacity: 1; transform: scale(1); }
     }
   `;

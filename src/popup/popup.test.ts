@@ -46,6 +46,9 @@ vi.mock("../shared/settings", () => ({
       settingsState.onEnabledChangedCb = null;
     };
   },
+  getCachedTheme: () => ({ mode: "light", background: "mint" }),
+  getTheme: () => Promise.resolve({ mode: "light", background: "mint" }),
+  onThemeChanged: () => () => {},
 }));
 
 // --- Test harness ----------------------------------------------------------

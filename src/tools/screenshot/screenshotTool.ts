@@ -291,7 +291,6 @@ function promptOutputFormat(): Promise<ScreenshotOutputFormat | null> {
     const handle = createShadowHost({
       overlay: "full-viewport",
       surfaceId: "screenshot-prompt",
-      theme: "dark",
     });
 
     let settled = false;

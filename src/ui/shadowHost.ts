@@ -24,9 +24,18 @@
  */
 
 import { applySharedStyles } from "./styles/theme";
+import {
+  getCachedTheme,
+  getTheme,
+  onThemeChanged,
+  type ThemePreference,
+} from "../shared/settings";
 
 /** Distinctive attribute placed on every Alpha Cursor shadow host element. */
 export const HOST_ATTRIBUTE = "data-acx-ui";
+
+/** Attribute carrying the active light-mode background variant. */
+export const BG_ATTRIBUTE = "data-acx-bg";
 
 /**
  * Attribute that pins a surface to an explicit Wise theme. The token sheet
@@ -197,23 +206,47 @@ export function createShadowHost(
   const point: ShadowHostPoint = options.point ?? { x: 0, y: 0 };
   const zIndex = options.zIndex ?? DEFAULT_Z_INDEX;
   const surfaceId = options.surfaceId ?? "surface";
-  const theme: ShadowHostTheme | null =
-    options.theme === undefined ? "dark" : options.theme;
 
   const host = document.createElement("div");
   host.setAttribute(HOST_ATTRIBUTE, surfaceId);
-  // Pin the surface to the Wise theme (light by default) so the closed shadow
-  // root's tokens do not inherit the host page's prefers-color-scheme (Req
-  // 20.8). The token sheet matches `:host([data-acx-theme="..."])`.
-  if (theme) {
-    host.setAttribute(THEME_ATTRIBUTE, theme);
-  }
+
+  /**
+   * Apply the user's theme preference (mode + light background) to the host so
+   * the closed shadow root's tokens reflect the chosen theme regardless of the
+   * host page's `prefers-color-scheme`. An explicit `options.theme` forces the
+   * mode and opts out of following the preference (used where a surface must be
+   * a fixed mode); `options.theme === null` leaves the surface unpinned.
+   */
+  const applyTheme = (pref: ThemePreference): void => {
+    const mode = options.theme === undefined ? pref.mode : options.theme;
+    if (mode) {
+      host.setAttribute(THEME_ATTRIBUTE, mode);
+    } else {
+      host.removeAttribute(THEME_ATTRIBUTE);
+    }
+    // The background variant only applies in light mode.
+    if (mode === "light") {
+      host.setAttribute(BG_ATTRIBUTE, pref.background);
+    } else {
+      host.removeAttribute(BG_ATTRIBUTE);
+    }
+  };
+  applyTheme(getCachedTheme());
   applyHostStyles(host, overlay, point, zIndex);
 
   const root = host.attachShadow({ mode: "closed" });
   applySharedStyles(root);
 
   resolveContainer(options.container).appendChild(host);
+
+  // Refine the theme once the persisted preference resolves, and react to any
+  // later change (the Options page theme picker) for the lifetime of the host.
+  void getTheme()
+    .then(applyTheme)
+    .catch(() => {
+      /* cached default already applied */
+    });
+  const unsubscribeTheme = onThemeChanged(applyTheme);
 
   const cleanups = new Set<() => void>();
   let mounted: Node | null = null;
@@ -315,6 +348,7 @@ export function createShadowHost(
     destroy(): void {
       if (destroyed) return;
       destroyed = true;
+      unsubscribeTheme();
       for (const cleanup of cleanups) {
         try {
           cleanup();

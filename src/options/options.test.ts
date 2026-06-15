@@ -61,6 +61,9 @@ vi.mock("../shared/settings", async (importOriginal) => {
       Promise.resolve({ ...actual.DEFAULT_FEATURE_FLAGS }),
     ),
     setFeatureFlag: vi.fn(() => Promise.resolve()),
+    getTheme: vi.fn(() => Promise.resolve({ ...actual.DEFAULT_THEME })),
+    setTheme: vi.fn(() => Promise.resolve()),
+    onThemeChanged: vi.fn(() => () => {}),
   };
 });
 

@@ -95,7 +95,7 @@ export default defineManifest({
   // 100% client-side with no remote code (Req 22.2).
   web_accessible_resources: [
     {
-      resources: ["tesseract/*"],
+      resources: ["tesseract/*", "fonts/*"],
       matches: ["<all_urls>"],
     },
   ],

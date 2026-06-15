@@ -4,7 +4,7 @@
 
 Alpha Cursor (domain: alphacursor.com) is a Chrome browser extension that delivers a productivity toolkit through a custom radial/context options panel. The panel is triggered by a middle mouse button click while the extension is in the ON state, behaving analogously to the native right-click context menu but presenting Alpha Cursor's own tools. The options surfaced are context-aware: the panel adapts based on whether the cursor is over an image, a video, selected text, or generic page content.
 
-The extension bundles twelve core tools: a cloud/local notepad clipboard, tab session save/restore, full-page screenshots, image saving with enhancement, cookie-consent popup removal, search-selected-text, a media downloader, a color picker, OCR text extraction, voice-to-text dictation, a tab shifter, and horizontal scroll. Cross-cutting concerns include a global ON/OFF toggle, per-user identity and data isolation for notepads, a settings/options page, a Wise-inspired visual design implemented with Tailwind CSS v4, and explicit permissions and privacy handling.
+The extension bundles twelve core tools: a cloud/local notepad clipboard, tab session save/restore, full-page screenshots, image saving with enhancement, cookie-consent popup removal, search-selected-text, a media downloader, a color picker, OCR text extraction, voice-to-text dictation, a tab shifter, and horizontal scroll. Cross-cutting concerns include a global ON/OFF toggle, per-user identity and data isolation for notepads, a settings/options page, a retro/neo-brutalist visual design implemented with Tailwind CSS v4, and explicit permissions and privacy handling.
 
 This document captures the user's intended requirements. Several capabilities (notably media downloading from YouTube, Instagram, Facebook, and Twitter/X) may conflict with those platforms' Terms of Service, and Chrome Manifest V3 imposes architectural constraints (service-worker background scripts, restricted remote code execution, limited persistent background processing). These constraints are recorded as explicit requirements and feasibility notes so that they are addressed during design rather than discovered during implementation.
 
@@ -27,8 +27,12 @@ This document captures the user's intended requirements. Several capabilities (n
 - **Voice_Transcriber**: The component that captures microphone audio and converts speech to text.
 - **Tab_Shifter**: The radial panel that displays open tabs for quick switching.
 - **Media_Downloader**: The component that downloads audio/video from supported media sites.
-- **Notification**: A transient, Wise-styled in-page message confirming the outcome of an action.
-- **Design_System**: The Wise-inspired visual design language defined in DESIGN.md and the wise-ui-skills skill.
+- **Notification**: A transient, retro-styled in-page message confirming the outcome of an action.
+- **Design_System**: The retro / neo-brutalist visual design language ("Create Next App") defined in DESIGN.md and the design-system-create-next-app skill.
+- **Notepad_Surface**: The visible background surface on which the Notepad and its Notepad_Entry items are displayed.
+- **Background_Swatch**: A single selectable preset background color presented in a background-color picker on the Options_Page.
+- **Light_Background_Palette**: The fixed set of six Background_Swatch presets the user can choose from for the Notepad_Surface: Mint Sage (`#C6E8CB`), White (`#FFFFFF`), Peach (`#FBE0C4`), Light Blue (`#C7E2F7`), Lilac (`#E4D6F7`), and Pale Yellow (`#F6EC9E`).
+- **Color_Background_Palette**: The fixed set of three bold, vivid Background_Swatch presets the user can choose from for the Notepad_Surface, presented separately from the Light_Background_Palette: Indigo (`#4503ff`), Violet (`#9747ff`), and Coral Red (`#ff5555`). The color values are preserved exactly as listed and are distinct from the Light_Background_Palette presets.
 
 ## Requirements
 
@@ -61,7 +65,7 @@ This document captures the user's intended requirements. Several capabilities (n
 8. WHEN the cursor is near a viewport edge, THE Content_Script SHALL reposition the Options_Panel so that all options remain within the visible viewport.
 9. WHEN the user clicks outside the Options_Panel or presses the Escape key, THE Content_Script SHALL close the Options_Panel.
 10. WHEN the user selects an option in the Options_Panel, THE Content_Script SHALL close the Options_Panel and invoke the selected tool.
-11. THE Options_Panel SHALL conform to the Design_System (the Wise-style visual language defined in DESIGN.md and the wise-ui-skills skill), rendering as a light sage/white surface with the lime-green primary accent regardless of the host page's color scheme.
+11. THE Options_Panel SHALL conform to the Design_System (the retro / neo-brutalist visual language defined in DESIGN.md and the design-system-create-next-app skill), rendering as a black surface with bold lilac borders, the yellow primary accent, and hard-offset shadows regardless of the host page's color scheme.
 12. THE Options_Panel SHALL render each tool as a monochrome line icon drawn from a single cohesive icon set that matches the Design_System, and SHALL NOT use multi-color emoji glyphs.
 13. WHEN the user hovers the pointer over a tool option, or moves keyboard focus to it, THE Options_Panel SHALL display a Design_System-styled tooltip showing that tool's full descriptive name, and SHALL hide the tooltip when the pointer leaves or focus moves away.
 14. WHERE the user's system requests reduced motion, THE Options_Panel SHALL present the tooltip without motion.
@@ -284,26 +288,28 @@ This document captures the user's intended requirements. Several capabilities (n
 #### Acceptance Criteria
 
 1. THE Extension SHALL provide an Options_Page accessible from the Extension toolbar popup and from the browser's extension management surface.
-2. THE Options_Page SHALL allow the user to configure the Notepad Separator, the "Search in" site list, and cloud-synchronization preference.
+2. THE Options_Page SHALL allow the user to configure the Notepad Separator, the "Search in" site list, the Notepad_Surface background color from either the Light_Background_Palette or the Color_Background_Palette, and cloud-synchronization preference.
 3. WHEN the user changes a setting on the Options_Page, THE Extension SHALL persist the change to the active User_Account's settings within 500ms while allowing the user to continue interacting with the Options_Page.
 4. THE Options_Page SHALL display the current Toggle state and allow the user to change it.
-5. THE Options_Page SHALL conform to the Design_System defined in DESIGN.md and the wise-ui-skills skill.
+5. THE Options_Page SHALL conform to the Design_System defined in DESIGN.md and the design-system-create-next-app skill.
 6. THE Options_Page SHALL provide a control to clear all Notepad_Entry items for the active User_Account, and SHALL require confirmation before clearing.
 
-### Requirement 20: Wise-Style Visual Design with Tailwind v4
+### Requirement 20: Retro / Neo-Brutalist Visual Design with Tailwind v4
 
-**User Story:** As a user, I want the extension's interface to follow the Wise-inspired design language, so that it feels calm, friendly, and polished.
+**User Story:** As a user, I want the extension's interface to follow the retro / neo-brutalist design language, so that it feels bold, distinctive, and high-contrast.
 
 #### Acceptance Criteria
 
 1. THE Extension SHALL implement all user-facing surfaces, including the Options_Panel, Options_Page, popup, and Notification, using Tailwind CSS v4.
 2. THE Extension SHALL apply the color tokens, typography scale, spacing scale, radius scale, and elevation treatments defined in DESIGN.md.
-3. THE Extension SHALL reserve the primary lime-green accent (carrying dark ink text) for primary actions, links, and focus states, consistent with the Design_System.
-4. THE Extension SHALL set interface text in the Inter typeface family as specified by the Design_System.
+3. THE Extension SHALL reserve the primary yellow accent (carrying dark ink text) for primary actions, links, and focus states, consistent with the Design_System.
+4. THE Extension SHALL set interface text in the VT323 typeface family as specified by the Design_System, bundling the font locally (no remote code).
 5. WHEN an interactive element receives keyboard focus, THE Extension SHALL display a visible focus indicator consistent with the Design_System.
 6. WHERE the user's system requests reduced motion, THE Extension SHALL honor the reduced-motion preference in its animations.
 7. THE Extension SHALL provide an accessible label for every icon-only control.
-8. THE Extension SHALL render the Options_Panel and other injected Shadow-DOM surfaces with the Wise light theme by default, independent of the host page's `prefers-color-scheme`, so the panel does not appear dark on dark-mode pages.
+8. THE Extension SHALL render the Options_Panel and other injected Shadow-DOM surfaces with the retro dark theme by default, independent of the host page's `prefers-color-scheme`, so the panel renders consistently on any page.
+9. THE Options_Page SHALL render the "Light background" picker as a row of Background_Swatch controls styled per the Design_System, each filled with its corresponding Light_Background_Palette color, and SHALL indicate the currently selected Background_Swatch with a bold active border.
+10. THE Options_Page SHALL render the "Color background" picker as a row of Background_Swatch controls styled per the Design_System, presented separately from the "Light background" picker, each filled with its corresponding Color_Background_Palette color, and SHALL indicate the currently selected Background_Swatch with a bold active border.
 
 ### Requirement 21: Permissions and Privacy
 
@@ -330,3 +336,32 @@ This document captures the user's intended requirements. Several capabilities (n
 3. WHEN the background service worker is terminated by the browser, THE Extension SHALL restore in-progress state from extension storage upon the worker's next activation where the operation supports resumption.
 4. WHERE a requested capability is not permitted by the host platform or a target site's Terms of Service, THE Extension SHALL record the limitation in user-facing documentation and SHALL degrade gracefully by disabling the affected option.
 5. THE Extension SHALL persist user data using the extension storage APIs so that data survives service-worker termination.
+
+### Requirement 23: Notepad Background Color Selection
+
+**User Story:** As a user, I want to choose a light background color for my notepad surface, so that I can personalize its appearance to match my taste.
+
+#### Acceptance Criteria
+
+1. THE Options_Page SHALL present a "Light background" picker offering the six Background_Swatch presets defined in the Light_Background_Palette: Mint Sage (`#C6E8CB`), White (`#FFFFFF`), Peach (`#FBE0C4`), Light Blue (`#C7E2F7`), Lilac (`#E4D6F7`), and Pale Yellow (`#F6EC9E`).
+2. WHEN the user selects a Background_Swatch, THE Options_Page SHALL mark that Background_Swatch as the selected one and SHALL visually indicate the selection with a bold active border.
+3. WHEN the user selects a Background_Swatch, THE Extension SHALL persist the selected background color to the active User_Account's settings within 500ms while allowing the user to continue interacting with the Options_Page.
+4. WHEN the Notepad_Surface is displayed, THE Extension SHALL apply the selected Background_Swatch color as the Notepad_Surface background color.
+5. IF no background color has been configured, THEN THE Extension SHALL apply the Mint Sage (`#C6E8CB`) Background_Swatch as the default Notepad_Surface background color.
+6. IF the persisted background color is invalid or corrupted, or does not match a Background_Swatch in the Light_Background_Palette, THEN THE Extension SHALL apply the Mint Sage (`#C6E8CB`) Background_Swatch as the Notepad_Surface background color.
+7. WHEN the browser starts, THE Extension SHALL restore the Notepad_Surface background color to the last persisted Background_Swatch selection for the active User_Account.
+
+### Requirement 24: Notepad Color Background Selection
+
+**User Story:** As a user, I want to choose a bold color background for my notepad surface from a separate palette, so that I can personalize its appearance with vivid colors in addition to the light options.
+
+#### Acceptance Criteria
+
+1. THE Options_Page SHALL present a "Color background" picker, separate from the "Light background" picker, offering the three Background_Swatch presets defined in the Color_Background_Palette: Indigo (`#4503ff`), Violet (`#9747ff`), and Coral Red (`#ff5555`).
+2. THE Options_Page SHALL preserve each Color_Background_Palette color value exactly as defined and SHALL NOT substitute a Color_Background_Palette color with a Light_Background_Palette color or a Design_System token color.
+3. WHEN the user selects a Background_Swatch from the Color_Background_Palette, THE Options_Page SHALL mark that Background_Swatch as the selected one and SHALL visually indicate the selection with a bold active border.
+4. WHEN the user selects a Background_Swatch from the Color_Background_Palette, THE Extension SHALL clear any prior selection from the Light_Background_Palette so that exactly one Background_Swatch is selected across both pickers.
+5. WHEN the user selects a Background_Swatch from the Color_Background_Palette, THE Extension SHALL persist the selected background color to the active User_Account's settings within 500ms while allowing the user to continue interacting with the Options_Page.
+6. WHEN the Notepad_Surface is displayed and the persisted selection is a Color_Background_Palette Background_Swatch, THE Extension SHALL apply the selected Color_Background_Palette color as the Notepad_Surface background color.
+7. IF the persisted background color is invalid or corrupted, or matches neither a Background_Swatch in the Light_Background_Palette nor a Background_Swatch in the Color_Background_Palette, THEN THE Extension SHALL apply the Mint Sage (`#C6E8CB`) Background_Swatch as the Notepad_Surface background color.
+8. WHEN the browser starts and the last persisted selection is a Color_Background_Palette Background_Swatch, THE Extension SHALL restore the Notepad_Surface background color to that Background_Swatch for the active User_Account.

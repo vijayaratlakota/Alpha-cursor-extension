@@ -52,10 +52,10 @@ export type DetachAutoCopy = () => void;
 /** Minimum pointer travel (CSS px) to treat a gesture as a drag, not a click. */
 const DRAG_THRESHOLD_PX = 4;
 
-/** Wise lime-green selection highlight. */
-const SELECTION_GREEN = "#9fe870";
-/** Dark ink for selected text on the green highlight (the Wise contrast). */
-const SELECTION_INK = "#0e0f0c";
+/** Brand-yellow selection highlight. */
+const SELECTION_GREEN = "#ffd913";
+/** Dark ink for selected text on the yellow highlight (the brand contrast). */
+const SELECTION_INK = "#0a0118";
 /** Marker attribute on the injected `::selection` style element. */
 const SELECTION_STYLE_ID = "acx-autocopy-selection-style";
 

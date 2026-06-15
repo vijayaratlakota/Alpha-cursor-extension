@@ -64,11 +64,11 @@ export const DEFAULT_DURATION_MS = 3500;
 /** Duration of the entrance/exit transition (skipped under reduced motion). */
 const ANIMATION_MS = 180;
 
-/** Decorative dot colour per kind (Wise semantic palette — decoration only). */
+/** Decorative dot colour per kind (arcade palette — decoration only). */
 const DOT_COLOR: Record<NotifyKind, string> = {
-  success: "#9fe870", // lime-green primary
-  error: "#ff6b70", // negative
-  info: "#38c8ff", // tertiary sky
+  success: "#2bb673", // green
+  error: "#ff5a5f", // coral red
+  info: "#ffd913", // brand yellow
 };
 
 /**
@@ -104,8 +104,6 @@ function ensureStack(): HTMLElement {
   hostHandle = createShadowHost({
     overlay: "full-viewport",
     surfaceId: "toast",
-    // Wise "ink + green" dark moment — fixed regardless of host page scheme.
-    theme: "dark",
   });
 
   const stack = document.createElement("div");
@@ -142,15 +140,13 @@ function buildToast(kind: NotifyKind, text: string, code?: ErrorCode): HTMLEleme
     "pointer-events-auto inline-flex items-center gap-sm",
     "font-sans text-body-sm",
   );
-  toast.style.background = "rgba(35, 38, 28, 0.82)";
-  toast.style.color = "#f4f6f0";
-  toast.style.border = "1px solid rgba(255, 255, 255, 0.12)";
-  toast.style.borderRadius = "9999px";
-  toast.style.padding = "10px 16px";
-  toast.style.fontWeight = "600";
-  toast.style.boxShadow = "rgba(0, 0, 0, 0.45) 0px 8px 24px";
-  toast.style.setProperty("-webkit-backdrop-filter", "blur(16px) saturate(160%)");
-  toast.style.backdropFilter = "blur(16px) saturate(160%)";
+  toast.style.background = "var(--acx-color-surface)";
+  toast.style.color = "var(--acx-color-ink)";
+  toast.style.border = "2px solid var(--acx-color-hairline)";
+  toast.style.borderRadius = "4px";
+  toast.style.padding = "8px 14px";
+  toast.style.fontWeight = "400";
+  toast.style.boxShadow = "var(--acx-shadow-soft)";
 
   // ARIA: errors interrupt (assertive/alert); success+info are polite/status.
   if (kind === "error") {
@@ -175,7 +171,7 @@ function buildToast(kind: NotifyKind, text: string, code?: ErrorCode): HTMLEleme
   if (code) {
     const codeEl = document.createElement("span");
     codeEl.className = "shrink-0 text-eyebrow font-sans";
-    codeEl.style.color = "rgba(255, 255, 255, 0.46)";
+    codeEl.style.color = "var(--acx-color-ink-muted)";
     codeEl.textContent = code;
     toast.appendChild(codeEl);
   }

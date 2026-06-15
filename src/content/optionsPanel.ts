@@ -156,81 +156,71 @@ function buildPanelStyles(): HTMLStyleElement {
   const style = document.createElement("style");
   style.textContent = `
     .acx-radial {
-      background:
-        radial-gradient(135% 135% at 50% 0%,
-          rgba(32, 36, 26, 0.86) 0%,
-          rgba(20, 22, 15, 0.82) 58%,
-          rgba(14, 15, 12, 0.86) 100%);
-      -webkit-backdrop-filter: blur(20px) saturate(160%);
-      backdrop-filter: blur(20px) saturate(160%);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow:
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-        rgba(0, 0, 0, 0.45) 0px 12px 40px,
-        rgba(0, 0, 0, 0.55) 0px 32px 64px;
+      background: var(--acx-color-surface);
+      border: 3px solid var(--acx-color-hairline);
+      box-shadow: var(--acx-shadow-elevated);
     }
     .acx-hint {
-      color: rgba(255, 255, 255, 0.34);
+      color: var(--acx-color-ink-muted);
     }
     .acx-tool {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       box-sizing: border-box;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-      color: #f4f6f0;
+      border: 3px solid var(--acx-color-hairline);
+      background: var(--acx-color-surface);
+      color: var(--acx-color-ink);
       cursor: pointer;
       border-radius: 9999px;
       padding: 0;
       outline: none;
-      transition: background-color 160ms ease-out, color 160ms ease-out,
-        border-color 160ms ease-out, box-shadow 160ms ease-out,
-        transform 160ms ease-out;
+      box-shadow: var(--acx-shadow-soft);
+      transition: background-color 100ms steps(2, end), color 100ms steps(2, end),
+        box-shadow 80ms steps(2, end), transform 80ms steps(2, end);
     }
     .acx-tool:hover,
     .acx-tool:focus-visible {
-      /* Icon turns lime-green; the hub stays dark (Wise reference). */
-      color: #9fe870;
-      background: rgba(159, 232, 112, 0.12);
-      border-color: rgba(159, 232, 112, 0.45);
-      box-shadow: 0 0 0 6px rgba(159, 232, 112, 0.16);
+      background: var(--acx-color-primary);
+      color: var(--acx-color-on-primary);
+      transform: translate(1px, 1px);
+    }
+    .acx-tool:active {
+      /* Press the coin into its shadow. */
+      box-shadow: 0 0 0 0 var(--acx-color-hairline);
+      transform: translate(var(--acx-press-offset, 3px), var(--acx-press-offset, 3px));
     }
     .acx-tip {
       position: absolute;
       z-index: 20;
       pointer-events: none;
       white-space: nowrap;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(35, 38, 28, 0.82);
-      -webkit-backdrop-filter: blur(14px) saturate(160%);
-      backdrop-filter: blur(14px) saturate(160%);
-      color: #f4f6f0;
-      padding: 6px 12px;
-      font-family: var(--acx-font-sans, "Inter", system-ui, sans-serif);
-      font-size: 14px;
-      font-weight: 600;
+      border-radius: 2px;
+      border: 2px solid var(--acx-color-hairline);
+      background: var(--acx-color-surface);
+      color: var(--acx-color-ink);
+      padding: 4px 10px;
+      font-family: var(--acx-font-sans, "VT323", monospace);
+      font-size: 16px;
+      font-weight: 400;
       line-height: 1.2;
-      box-shadow: rgba(0, 0, 0, 0.45) 0px 8px 24px;
+      box-shadow: var(--acx-shadow-soft);
       opacity: 0;
     }
     .acx-tip-show { opacity: 1; }
     @media (prefers-reduced-motion: no-preference) {
-      .acx-radial { animation: acx-radial-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+      .acx-radial { animation: acx-radial-in 150ms steps(3, end) both; }
       .acx-tool {
-        animation: acx-tool-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: acx-tool-in 180ms steps(3, end) both;
       }
-      .acx-tool:hover,
-      .acx-tool:focus-visible { transform: scale(1.08); }
-      .acx-tip { transition: opacity 140ms ease-out; }
+      .acx-tip { transition: opacity 120ms steps(2, end); }
     }
     @keyframes acx-radial-in {
-      from { opacity: 0; transform: scale(0.86); }
+      from { opacity: 0; transform: scale(0.92); }
       to   { opacity: 1; transform: scale(1); }
     }
     @keyframes acx-tool-in {
-      from { opacity: 0; transform: scale(0.5); }
+      from { opacity: 0; transform: scale(0.6); }
       to   { opacity: 1; transform: scale(1); }
     }
   `;
@@ -356,10 +346,6 @@ export function openPanel(context: ContextType, point: Point): void {
     overlay: "anchored",
     point: origin,
     surfaceId: "options-panel",
-    // Wise "ink + green" polarity: the radial hub is the brand's dark moment
-    // (near-black olive canvas) carrying the lime-green accent, matching the
-    // reference UI regardless of the host page's color scheme (Req 20.8).
-    theme: "dark",
   });
   activeHandle = handle;
 

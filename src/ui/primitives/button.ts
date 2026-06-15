@@ -77,31 +77,34 @@ export interface CreateButtonOptions {
  * press transform (Req 20.6), and the disabled treatment.
  */
 const BASE_CLASSES =
-  "inline-flex items-center justify-center font-sans select-none cursor-pointer border-0 " +
+  "acx-btn inline-flex items-center justify-center font-sans select-none cursor-pointer " +
   "outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary " +
-  "disabled:opacity-50 disabled:cursor-not-allowed " +
-  "motion-safe:transition-all motion-safe:duration-150 motion-safe:ease-out " +
-  "motion-safe:hover:-translate-y-0.5 motion-safe:active:scale-95";
+  "disabled:opacity-50 disabled:cursor-not-allowed";
 
-/** Variant-specific class strings derived from the Wise DESIGN.md component specs. */
+/**
+ * Variant-specific class strings for the retro / arcade design system. The
+ * brutalist chrome (thick black border + hard black offset shadow + the
+ * "press-into-shadow" interaction) lives in the shared `.acx-btn` class
+ * (tailwind.css); variants only set fill/text/geometry.
+ */
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
-  // Wise primary CTA: lime-green fill with DARK ink text, rounded pill,
-  // pressed -> lighter green. Hover lifts + brightens.
+  // Primary CTA: indigo fill, white text, pill geometry. Pressing pushes it
+  // into its black shadow (see `.acx-btn` active state).
   primary:
-    "bg-primary text-on-primary text-body-sm font-semibold rounded-lg px-lg py-sm " +
-    "hover:bg-primary-active active:bg-primary-active motion-safe:hover:shadow-soft",
-  // Wise secondary: sage/white surface, ink text → turns lime-green on hover.
+    "acx-btn-shadow bg-[#4503ff] text-white text-button rounded-full px-xl py-sm " +
+    "border-2 border-hairline hover:bg-[#3a02d6]",
+  // Secondary: violet fill, white text, pill.
   secondary:
-    "bg-canvas-soft text-ink text-body-sm font-semibold rounded-lg px-lg py-sm " +
-    "hover:bg-fill-hover hover:text-primary motion-safe:hover:shadow-soft",
-  // Wise tertiary/utility: surface, ink text → turns lime-green on hover.
+    "acx-btn-shadow bg-[#9747ff] text-white text-button rounded-full px-xl py-sm " +
+    "border-2 border-hairline hover:bg-[#8230f0]",
+  // Tertiary/utility: coral fill, white text, squared with the same drop.
   utility:
-    "bg-surface text-ink text-body-sm font-semibold rounded-md border border-hairline-strong px-md py-xs " +
-    "hover:bg-fill-hover hover:text-primary hover:border-primary",
-  // Circular translucent fill; ink glyph → turns lime-green on hover.
+    "acx-btn-shadow bg-[#ff5555] text-white text-button rounded-md px-md py-xs " +
+    "border-2 border-hairline-strong hover:bg-[#f23b3b]",
+  // Circular: violet fill, white glyph; the arcade "coin" button.
   "icon-circular":
-    "bg-fill-subtle text-ink rounded-full size-8 p-0 " +
-    "hover:bg-fill-hover hover:text-primary",
+    "acx-btn-shadow bg-[#9747ff] text-white rounded-full size-9 p-0 " +
+    "border-2 border-hairline hover:bg-[#8230f0]",
 };
 
 /**

@@ -42,42 +42,45 @@ describe("createButton — Notion-token conformance snapshots (Req 20.1, 20.2)",
     });
   }
 
-  it("primary button carries the Wise green CTA chrome (bg-primary/text-on-primary/rounded-lg)", () => {
+  it("primary button carries the arcade CTA chrome (indigo fill/white text/pill/shadow)", () => {
     const button = createButton({ variant: "primary", label: "Get started" });
-    expect(button.className).toContain("bg-primary");
-    // Wise green carries DARK ink text (on-primary), not white.
-    expect(button.className).toContain("text-on-primary");
-    expect(button.className).toContain("text-body-sm");
-    // Compact rounded pill geometry for injected surfaces.
-    expect(button.className).toContain("rounded-lg");
-    // pressed state stays on the lighter primary-active token.
-    expect(button.className).toContain("active:bg-primary-active");
+    expect(button.className).toContain("bg-[#4503ff]");
+    // Bold brand fill carries white text.
+    expect(button.className).toContain("text-white");
+    expect(button.className).toContain("text-button");
+    // Pill geometry with the thick black border + hard-offset shadow.
+    expect(button.className).toContain("rounded-full");
+    expect(button.className).toContain("border-hairline");
+    expect(button.className).toContain("acx-btn-shadow");
   });
 
-  it("secondary button uses the sage surface with the compact pill geometry", () => {
+  it("secondary button uses the violet brand fill with the pill geometry", () => {
     const button = createButton({ variant: "secondary", label: "Request a demo" });
-    expect(button.className).toContain("bg-canvas-soft");
-    expect(button.className).toContain("text-ink");
-    expect(button.className).toContain("rounded-lg");
+    expect(button.className).toContain("bg-[#9747ff]");
+    expect(button.className).toContain("text-white");
+    expect(button.className).toContain("rounded-full");
+    expect(button.className).toContain("acx-btn-shadow");
   });
 
-  it("utility button uses the tighter 12px radius and a hairline border", () => {
+  it("utility button uses the coral brand fill, squared radius and a strong hairline border", () => {
     const button = createButton({ variant: "utility", label: "Get started free" });
+    expect(button.className).toContain("bg-[#ff5555]");
     expect(button.className).toContain("rounded-md");
-    expect(button.className).toContain("border");
+    expect(button.className).toContain("border-2");
     expect(button.className).toContain("border-hairline-strong");
-    // utility deliberately never uses the CTA pill geometry.
-    expect(button.className).not.toContain("rounded-xl");
+    // utility deliberately never uses the pill geometry.
+    expect(button.className).not.toContain("rounded-full");
   });
 
-  it("icon-circular button is a circular translucent control", () => {
+  it("icon-circular button is a circular bordered arcade control", () => {
     const button = createButton({
       variant: "icon-circular",
       ariaLabel: "Play",
       icon: "▶",
     });
     expect(button.className).toContain("rounded-full");
-    expect(button.className).toContain("size-8");
+    expect(button.className).toContain("size-9");
+    expect(button.className).toContain("acx-btn-shadow");
   });
 });
 
@@ -89,11 +92,11 @@ describe("createButton — reserved focus ring & reduced motion (Req 20.3, 20.5)
     expect(button.className).toContain("focus-visible:outline-offset-2");
   });
 
-  it("gates press transitions behind motion-safe so reduced-motion is honored", () => {
+  it("carries the brutalist press-into-shadow interaction class", () => {
     const button = createButton({ variant: "primary", label: "Press me" });
-    expect(button.className).toContain("motion-safe:transition-all");
-    expect(button.className).toContain("motion-safe:active:scale-95");
-    expect(button.className).toContain("motion-safe:hover:-translate-y-0.5");
+    // The press motion + active state live in `.acx-btn` (motion gated in CSS).
+    expect(button.className).toContain("acx-btn");
+    expect(button.className).toContain("acx-btn-shadow");
   });
 });
 
