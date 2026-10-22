@@ -21,6 +21,15 @@ to manage the extension.
 
 ## Build and install locally
 
+### Download the ready-to-install package
+
+[Download Alpha Cursor for Chrome](./Alpha-Cursor-v0.1.0-chrome.zip), then
+extract the ZIP. In Chrome, open `chrome://extensions`, enable **Developer
+mode**, choose **Load unpacked**, and select the extracted folder containing
+`manifest.json`.
+
+### Build from source
+
 ```sh
 npm ci
 npm run build
